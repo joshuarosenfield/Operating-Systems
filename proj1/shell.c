@@ -3,7 +3,7 @@
 //Joshua Rosenfield, Barret McKinney, Ryan Kenney
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#include <stdlib.h> //getenv
 #include <unistd.h> //getlogin_r, gethostname, getcwd
 
 typedef struct
@@ -13,7 +13,7 @@ typedef struct
 } instruction;
 
 void addToken(instruction* instr_ptr, char* tok);
-void printTokens(instruction* instr_ptr);
+void executeTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 
@@ -79,7 +79,7 @@ int main() {
 		} while ('\n' != getchar());    //until end of line is reached
 
 		addNull(&instr);
-		printTokens(&instr);
+		executeTokens(&instr);
 		clearInstruction(&instr);
 	}
 
@@ -115,13 +115,26 @@ void addNull(instruction* instr_ptr)
 	instr_ptr->numTokens++;
 }
 
-void printTokens(instruction* instr_ptr)
+void executeTokens(instruction* instr_ptr)
 {
 	int i;
+	//print tokens
 	printf("Tokens:\n");
 	for (i = 0; i < instr_ptr->numTokens; i++) {
 		if ((instr_ptr->tokens)[i] != NULL)
 			printf("%s\n", (instr_ptr->tokens)[i]);
+	}
+	//end print tokens
+	//start of env implementation
+	for(i = 0; i < instr_ptr->numTokens - 1;i++){
+		if(instr_ptr->tokens[i][0] == '$'){
+			if(getenv(instr_ptr->tokens[i] + 1) == NULL){
+				printf("%s: Undefined variable.\n", instr_ptr->tokens[i]);
+			}
+			else{
+				printf("%s\n", getenv(instr_ptr->tokens[i] + 1));
+			}	
+		}
 	}
 }
 
