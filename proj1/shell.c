@@ -2,7 +2,7 @@
 //Project 1
 //Joshua Rosenfield, Barret McKinney, Ryan Kenney
 #include <stdio.h>
-#include <string.h>
+#include <string.h> //strcmp
 #include <stdlib.h> //getenv
 #include <unistd.h> //getlogin_r, gethostname, getcwd
 
@@ -10,6 +10,7 @@ typedef struct
 {
 	char** tokens;
 	int numTokens;
+	int exitTotal;	//exit command
 } instruction;
 
 void addToken(instruction* instr_ptr, char* tok);
@@ -24,6 +25,7 @@ int main() {
 	instruction instr;
 	instr.tokens = NULL;
 	instr.numTokens = 0;
+	instr.exitTotal = 0;	//initial exit 
 
 	//user login
 	char loginarr[256];
@@ -81,6 +83,7 @@ int main() {
 		addNull(&instr);
 		executeTokens(&instr);
 		clearInstruction(&instr);
+		instr.exitTotal += 1;
 	}
 
 	return 0;
@@ -119,22 +122,39 @@ void executeTokens(instruction* instr_ptr)
 {
 	int i;
 	//print tokens
-	printf("Tokens:\n");
+	printf("Printing Tokens:\n");
 	for (i = 0; i < instr_ptr->numTokens; i++) {
 		if ((instr_ptr->tokens)[i] != NULL)
 			printf("%s\n", (instr_ptr->tokens)[i]);
 	}
+	printf("End print tokens\n");
 	//end print tokens
 	//start of env implementation
 	for(i = 0; i < instr_ptr->numTokens - 1;i++){
 		if(instr_ptr->tokens[i][0] == '$'){
 			if(getenv(instr_ptr->tokens[i] + 1) == NULL){
-				printf("%s: Undefined variable.\n", instr_ptr->tokens[i]);
+				strcpy(instr_ptr->tokens[1], strcat(instr_ptr->tokens[i]+1,  ": Undefined variable."));	
+			//printf("%s: Undefined variable.\n", instr_ptr->tokens[i]);
+			//TODO::make this only print
 			}
-			else{
-				printf("%s\n", getenv(instr_ptr->tokens[i] + 1));
+			else{	//copys $*** to its token 
+				strcpy(instr_ptr->tokens[i],  getenv(instr_ptr->tokens[i] + 1));
+				//printf("%s\n", instr_ptr->tokens[i]);
 			}	
 		}
+	}
+	//built ins
+	if(strcmp(instr_ptr->tokens[0], "exit") == 0){
+		printf("Exiting...\n");
+		printf("\tCommands executed: %d\n",instr_ptr->exitTotal);
+		exit(EXIT_SUCCESS); 
+	}
+	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
+		for(i = 1;i < instr_ptr->numTokens;i++){
+                	if ((instr_ptr->tokens)[i] != NULL)
+                        	printf("%s ", (instr_ptr->tokens)[i]);
+        	}
+		printf("\n");
 	}
 }
 
@@ -143,9 +163,8 @@ void clearInstruction(instruction* instr_ptr)
 	int i;
 	for (i = 0; i < instr_ptr->numTokens; i++)
 		free(instr_ptr->tokens[i]);
-
 	free(instr_ptr->tokens);
-
 	instr_ptr->tokens = NULL;
 	instr_ptr->numTokens = 0;
+	//instr_ptr->exitTotal = 0;
 }
