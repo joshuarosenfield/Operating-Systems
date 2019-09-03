@@ -36,6 +36,7 @@ int main() {
 	getcwd(cwdarr, 256);
 	
 	while (1) {
+		getcwd(cwdarr, 256);
 		printf("%s@%s : %s>", loginarr, hostarr, cwdarr);
 		//printf("Please enter an instruction: ");
 
@@ -133,9 +134,10 @@ void executeTokens(instruction* instr_ptr)
 	for(i = 0; i < instr_ptr->numTokens - 1;i++){
 		if(instr_ptr->tokens[i][0] == '$'){
 			if(getenv(instr_ptr->tokens[i] + 1) == NULL){
-				strcpy(instr_ptr->tokens[1], strcat(instr_ptr->tokens[i]+1,  ": Undefined variable."));	
-			//printf("%s: Undefined variable.\n", instr_ptr->tokens[i]);
-			//TODO::make this only print
+				//strcpy(instr_ptr->tokens[1], strcat(instr_ptr->tokens[i]+1,  ": Undefined variable."));	
+				printf("%s: Undefined variable.\n", instr_ptr->tokens[i]);
+				return;	//end this command
+				//TODO::make this only print
 			}
 			else{	//copys $*** to its token 
 				strcpy(instr_ptr->tokens[i],  getenv(instr_ptr->tokens[i] + 1));
@@ -149,12 +151,21 @@ void executeTokens(instruction* instr_ptr)
 		printf("\tCommands executed: %d\n",instr_ptr->exitTotal);
 		exit(EXIT_SUCCESS); 
 	}
+	 else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
+                if(chdir(instr_ptr->tokens[1]) != 0)
+                        printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
+        }
+	//not permanent ??
 	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
 		for(i = 1;i < instr_ptr->numTokens;i++){
                 	if ((instr_ptr->tokens)[i] != NULL)
                         	printf("%s ", (instr_ptr->tokens)[i]);
         	}
 		printf("\n");
+	}
+	//forks below 
+	else{
+		printf("%s: Command not recognized\n", instr_ptr->tokens[0]);
 	}
 }
 
