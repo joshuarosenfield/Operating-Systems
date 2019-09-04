@@ -17,6 +17,7 @@ void addToken(instruction* instr_ptr, char* tok);
 void executeTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
+char* resolveShortcut(char* path);
 
 int main() {
 	char* token = NULL;
@@ -34,7 +35,9 @@ int main() {
  	getlogin_r(loginarr, 256);
 	gethostname(hostarr, 256);
 	getcwd(cwdarr, 256);
-	
+	//tests function
+        resolveShortcut("/home/kenney/why/proj1.c");
+
 	while (1) {
 		getcwd(cwdarr, 256);
 		printf("%s@%s : %s>", loginarr, hostarr, cwdarr);
@@ -189,4 +192,31 @@ void clearInstruction(instruction* instr_ptr)
 	instr_ptr->tokens = NULL;
 	instr_ptr->numTokens = 0;
 	//instr_ptr->exitTotal = 0;
+}
+
+char* resolveShortcut(char* path){
+        //printf("%s\n",path);
+        int i;
+        instruction instr;
+
+        int start = 0; //saves location of / in path
+        //skip first / in absolute path
+        if(path[0] == '/')
+                start = 1;
+
+        for(i = start; i <= strlen(path); ++i){
+                //stop at every / found in path; save word between start and i as a token
+                if(path[i] == '/' || i == strlen(path)){
+                        char* temp = (char*)malloc((i-start + 1) * sizeof(char));
+                        int j;
+                        //extract letters into string
+                        for(j = 0; j < i-start; ++j)
+                                temp[j] = path[start+j];
+                        temp[i-start] = '\0';
+                        start = i+1;
+                        addToken(&instr,temp);
+                        printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
+                }
+        }
+        addNull(&instr);
 }
