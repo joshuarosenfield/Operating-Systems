@@ -151,11 +151,12 @@ void executeTokens(instruction* instr_ptr)
 		printf("\tCommands executed: %d\n",instr_ptr->exitTotal);
 		exit(EXIT_SUCCESS); 
 	}
-	 else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
+	// cd not finished
+	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
                 if(chdir(instr_ptr->tokens[1]) != 0)
                         printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
         }
-	//not permanent ??
+	//do we neeed to even do this?
 	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
 		for(i = 1;i < instr_ptr->numTokens;i++){
                 	if ((instr_ptr->tokens)[i] != NULL)
@@ -163,9 +164,19 @@ void executeTokens(instruction* instr_ptr)
         	}
 		printf("\n");
 	}
-	//forks below 
+	//forks and execv 
 	else{
-		printf("%s: Command not recognized\n", instr_ptr->tokens[0]);
+	//char *const parmList[] = {"/bin/ls", "-ls", NULL};	//shows needed fromat...used for testing only
+		pid_t pid;
+		pid = fork();
+		if(pid == 0){
+			//execv(parmList[0], parmList); //used for testing only
+			execv(instr_ptr->tokens[0], instr_ptr->tokens);
+			printf("%s: Command not found\n", instr_ptr->tokens[0]);	
+		}
+		else{
+			 while(wait(NULL) != pid);
+		}
 	}
 }
 
