@@ -1,6 +1,6 @@
 //COP4610
 //Project 1
-//Joshua Rosenfield, Barret McKinney, Ryan Kenney
+//Joshua Rosenfield, Barrett McKinney, Ryan Kenney
 #include <stdio.h>
 #include <string.h> //strcmp
 #include <stdlib.h> //getenv
