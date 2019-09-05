@@ -5,6 +5,7 @@
 #include <string.h> //strcmp
 #include <stdlib.h> //getenv
 #include <unistd.h> //getlogin_r, gethostname, getcwd
+#include <sys/stat.h> //check for files
 
 typedef struct
 {
