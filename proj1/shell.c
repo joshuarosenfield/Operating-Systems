@@ -218,7 +218,7 @@ char* resolveShortcut(char* path){
 			if(strcmp(temp, "\0") != 0){
 				addToken(&instr,temp);
 			}
-			printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
+			//printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
 			free(temp);
 		}
 	}
