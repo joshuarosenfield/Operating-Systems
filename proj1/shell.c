@@ -37,7 +37,7 @@ int main() {
 	gethostname(hostarr, 256);
 	getcwd(cwdarr, 256);
 	//tests function for shortcuts
-        //char* test = resolveShortcut("~/Downloads//../Operating-Systems/proj1/shell.c/");
+        //char* test = resolveShortcut("/home/kenney/./Downloads/../test.c");
 	//printf("%s\n",test);
 	while (1) {
 		getcwd(cwdarr, 256);
@@ -196,7 +196,7 @@ void clearInstruction(instruction* instr_ptr)
 }
 
 char* resolveShortcut(char* path){
-	//printf("%s\n",path);
+	printf("%s\n",path);
 	int i;
 	instruction instr;
 
@@ -218,80 +218,82 @@ char* resolveShortcut(char* path){
 			if(strcmp(temp, "\0") != 0){
 				addToken(&instr,temp);
 			}
-			//printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
+			printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
 			free(temp);
 		}
 	}
 	addNull(&instr);
 
-	char* cwd;
-	cwd = (char*)malloc(256*sizeof(char));
-	getcwd(cwd,255);
-	//absolute path
+	int absolute = 0;
+	char* cwd = (char*)malloc(256*sizeof(char));
 	if(path[0] == '/'){
+		absolute = 1;
+		cwd[0] = '/';
 	}
-	//start relative from cwd	
 	else{
-		//go token by token
-		for(i = 0; i < instr.numTokens-1; ++i){
-			//return to $HOME if ~ found as first token, else error
-			if(strcmp(instr.tokens[i],"~\0") == 0){
-				if(i == 0){
-					memset(cwd, 0, 256);
-					strcpy(cwd,getenv("HOME"));
+		getcwd(cwd,255);
+	}
+	//go token by token
+	for(i = 0; i < instr.numTokens-1; ++i){
+		//return to $HOME if ~ found as first token, else error
+		if(strcmp(instr.tokens[i],"~\0") == 0){
+			if(i == 0){
+				memset(cwd, 0, 256);
+				strcpy(cwd,getenv("HOME"));
+			}
+			else{
+				printf("Error: '~' can only be used at the start of the path\n");
+				return "\0";				}
+		}
+		//move up a directory if possible when .. is found, else error
+		else if(strcmp(instr.tokens[i],"..\0") == 0){
+			int j = strlen(cwd);
+			while(cwd[j] != '/'){
+				if(j == 1){
+					printf("Error: Cannot go past root directory\n");
+					return "\0";	
+				}
+				cwd[j] = '\0';
+				--j;
+			}
+			cwd[strlen(cwd)-1] = '\0';
+		}
+		//check if word is a file / directory
+		else if(strcmp(instr.tokens[i],".\0") != 0){
+			struct stat buffer;
+			char* temp = (char*)malloc(256*sizeof(char));
+			strcpy(temp,cwd);
+			if(absolute == 0){
+				strcat(temp,"/");
+			}
+			else{
+				absolute = 0;
+			}
+			strcat(temp,instr.tokens[i]); //build path from cwd + / + token
+			stat(temp, &buffer);
+			if(S_ISDIR(buffer.st_mode)){
+				strcpy(cwd,temp);
+			}
+			//check if is file and if filename is last token
+			else if(S_ISREG(buffer.st_mode)){
+				if(i == instr.numTokens-2){
+					strcpy(cwd,temp);
 				}
 				else{
-					printf("Error: '~' can only be used at the start of the path\n");
+					printf("Error: Files can only appear at the end of a path\n");
 					return "\0";
 				}
 			}
-			//move up a directory if possible when .. is found, else error
-			else if(strcmp(instr.tokens[i],"..\0") == 0){
-				int j = strlen(cwd);
-				while(cwd[j] != '/'){
-					if(j == 1){
-						printf("Error: Cannot go past root directory\n");
-						return "\0";	
-					}
-					cwd[j] = '\0';
-					--j;
-				}
-				cwd[strlen(cwd)-1] = '\0';
-			}
-			//check if word is a file / directory
+			//misc token / unknown name
 			else{
-				struct stat buffer;
-				char* temp = (char*)malloc(256*sizeof(char));
-				strcpy(temp,cwd);
-				strcat(temp,"/");
-				strcat(temp,instr.tokens[i]); //build path from cwd + / + token
-				stat(temp, &buffer);
-				if(S_ISDIR(buffer.st_mode)){
-					strcpy(cwd,temp);
-				}
-				//check if is file and if filename is last token
-				else if(S_ISREG(buffer.st_mode)){
-					if(i == instr.numTokens-2){
-						strcpy(cwd,temp);
-					}
-					else{
-						printf("Error: Files can only appear at the end of a path\n");
-						return "\0";
-					}
-				}
-				//misc token / unknown name
-				else{
-					if(strcmp(cwd,".\0") != 0){
-						printf("Error: File / directory '%s' not found\n",instr.tokens[i]);
-						return "\0";
-					}
-				}
-				free(temp);
-				buffer.st_mode = 0;
+				printf("Error: File / directory '%s' not found\n",instr.tokens[i]);
+				return "\0";
 			}
-			//printf("%s\n",cwd);
-
+			free(temp);
+			buffer.st_mode = 0;
 		}
+		//printf("%s\n",cwd);
+
 	}
 	return cwd;
 }	
