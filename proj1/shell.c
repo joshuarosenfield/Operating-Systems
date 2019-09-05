@@ -37,8 +37,8 @@ int main() {
 	gethostname(hostarr, 256);
 	getcwd(cwdarr, 256);
 	//tests function for shortcuts
-        //resolveShortcut("~/COP4610/proj1/../Project1");
-
+        //char* test = resolveShortcut("~/Downloads//../Operating-Systems/proj1/shell.c/");
+	//printf("%s\n",test);
 	while (1) {
 		getcwd(cwdarr, 256);
 		printf("%s@%s : %s>", loginarr, hostarr, cwdarr);
@@ -215,8 +215,11 @@ char* resolveShortcut(char* path){
 				temp[j] = path[start+j];
 			temp[i-start] = '\0';
 			start = i+1;
-			addToken(&instr,temp);
+			if(strcmp(temp, "\0") != 0){
+				addToken(&instr,temp);
+			}
 			//printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
+			free(temp);
 		}
 	}
 	addNull(&instr);
@@ -239,7 +242,7 @@ char* resolveShortcut(char* path){
 				}
 				else{
 					printf("Error: '~' can only be used at the start of the path\n");
-					return 0;
+					return "\0";
 				}
 			}
 			//move up a directory if possible when .. is found, else error
@@ -248,7 +251,7 @@ char* resolveShortcut(char* path){
 				while(cwd[j] != '/'){
 					if(j == 1){
 						printf("Error: Cannot go past root directory\n");
-						return 0;	
+						return "\0";	
 					}
 					cwd[j] = '\0';
 					--j;
@@ -273,14 +276,14 @@ char* resolveShortcut(char* path){
 					}
 					else{
 						printf("Error: Files can only appear at the end of a path\n");
-						return 0;
+						return "\0";
 					}
 				}
 				//misc token / unknown name
 				else{
 					if(strcmp(cwd,".\0") != 0){
 						printf("Error: File / directory '%s' not found\n",instr.tokens[i]);
-						return 0;
+						return "\0";
 					}
 				}
 				free(temp);
