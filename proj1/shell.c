@@ -19,6 +19,7 @@ void executeTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 char* resolveShortcut(char* path);
+char*  pathResolution(char* cmd);
 
 int main() {
 	char* token = NULL;
@@ -37,7 +38,7 @@ int main() {
 	gethostname(hostarr, 256);
 	getcwd(cwdarr, 256);
 	//tests function for shortcuts
-        //char* test = resolveShortcut("/home/kenney/./Downloads/../test.c");
+        //char* test = resolveShortcut("~");
 	//printf("%s\n",test);
 	while (1) {
 		getcwd(cwdarr, 256);
@@ -149,11 +150,23 @@ void executeTokens(instruction* instr_ptr)
 			}	
 		}
 	}
+/*
+ *
+ *
+ *
+	$PATH resolution
+ *
+ *
+ *
+*/
+//printf("%s\n", instr_ptr->tokens[0]);
+strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
+//printf("%s\n", instr_ptr->tokens[0]);
 	//built ins
 	if(strcmp(instr_ptr->tokens[0], "exit") == 0){
 		printf("Exiting...\n");
 		printf("\tCommands executed: %d\n",instr_ptr->exitTotal);
-		exit(EXIT_SUCCESS); 
+		exit(1); 
 	}
 	// cd not finished
 	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
@@ -196,7 +209,7 @@ void clearInstruction(instruction* instr_ptr)
 }
 
 char* resolveShortcut(char* path){
-	printf("%s\n",path);
+	//printf("%s\n",path);
 	int i;
 	instruction instr;
 
@@ -297,3 +310,67 @@ char* resolveShortcut(char* path){
 	}
 	return cwd;
 }	
+
+char* pathResolution(char* cmd){
+	//printf("cmd = %s\n", cmd);
+	char **paths_array;	//array for possible paths 
+	int total_colon, path_length, counter, i;
+	total_colon = 0;
+	counter = 0;
+
+	//char * env_path = getenv("PATH");
+
+	char * test_path = getenv("PATH");
+	int test_path_length = strlen(test_path);
+	char env_path[test_path_length];
+	strcpy(env_path, test_path);
+        
+	//printf("env path = %s\n", env_path);
+	path_length = strlen(env_path);
+	//printf("%d", char_length_path);
+	//add up amount of : (paths)
+	for(i = 0; i < path_length;i++){
+		if(env_path[i] == ':'){
+			env_path[i] = '\0';
+			total_colon++;	
+		}
+	}
+	//printf("colon count = %d\n" , total_colon);
+	//env_path = path with \0 instead of :
+	if(total_colon == 0)
+		return cmd;	
+	paths_array = malloc((total_colon + 1) * sizeof(*paths_array));
+	//fill paths array
+	paths_array[0] = env_path;
+	for(i = 0; i < path_length;i++){
+		if(env_path[i] == '\0'){
+			paths_array[++counter] = env_path + i + 1;
+            }
+	}	
+//	for(i = 0;i < total_colon;i++){
+//		printf("%s\n", paths_array[i]);
+//	}
+	
+	//need to add cmd to the end of every path then check them if it exist: else error
+	//what do i need instead of 400?
+	char temp[2056];
+	//char *temp = malloc(sizeof(char) * 400);
+	for(i = 0; i < path_length;i++){
+		strcpy(temp, paths_array[i]);
+		strcat(temp, "/");
+		strcat(temp, cmd);
+		if(access(temp,F_OK) != -1){
+			cmd = temp;
+			free(paths_array);
+			return cmd;
+		}	
+	}
+	printf("doesnt exist\n");
+	free(paths_array);
+	return cmd;
+}
+
+
+
+
+
