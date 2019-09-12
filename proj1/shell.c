@@ -43,6 +43,7 @@ int main() {
 	while (1) {
 		getcwd(cwdarr, 256);
 		printf("%s@%s : %s>", loginarr, hostarr, cwdarr);
+		int invalid_path = 0; //Set if resolveShortcut finds a bad path
 		//printf("Please enter an instruction: ");
 
 		// loop reads character sequences separated by whitespace
@@ -52,6 +53,7 @@ int main() {
 			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
 
 			int i;
+			int is_path = 0;
 			int start = 0;
 			for (i = 0; i < strlen(token); i++) {
 				//pull out special characters and make them into a separate token in the instruction
@@ -81,13 +83,29 @@ int main() {
 			//free and reset variables
 			free(token);
 			free(temp);
-
+			is_path = 0;
 			token = NULL;
 			temp = NULL;
 		} while ('\n' != getchar());    //until end of line is reached
+		
+		int j = 0;
+		int i = 0;
+		//check for . and / in each token to determine if path; if so expand it
+		for(i = 0; i < instr.numTokens; ++i){
+			for(j = 0; j < strlen(instr.tokens[i]); ++j){
+				if(instr.tokens[i][j] == '/' || instr.tokens[i][j] == '.'){
+					instr.tokens[i] = resolveShortcut(instr.tokens[i]);
+					if(strcmp(instr.tokens[i]," \0") == 0)
+						invalid_path = 1;
+					break;
+				}
+			}
+		}
 
 		addNull(&instr);
-		executeTokens(&instr);
+		//Only execute instruction if it has a valid path
+		if(invalid_path == 0)
+			executeTokens(&instr);
 		clearInstruction(&instr);
 		instr.exitTotal += 1;
 	}
@@ -102,9 +120,9 @@ void addToken(instruction* instr_ptr, char* tok)
 	//extend token array to accomodate an additional token
 	if (instr_ptr->numTokens == 0)
 		instr_ptr->tokens = (char**) malloc(sizeof(char*));
-	else
+	else{
 		instr_ptr->tokens = (char**) realloc(instr_ptr->tokens, (instr_ptr->numTokens+1) * sizeof(char*));
-
+	}
 	//allocate char array for new token in new slot
 	instr_ptr->tokens[instr_ptr->numTokens] = (char *)malloc((strlen(tok)+1) * sizeof(char));
 	strcpy(instr_ptr->tokens[instr_ptr->numTokens], tok);
@@ -212,7 +230,8 @@ char* resolveShortcut(char* path){
 	//printf("%s\n",path);
 	int i;
 	instruction instr;
-
+	instr.tokens = NULL;
+	instr.numTokens = 0;
 	int start = 0; //saves location of / in path
 	//skip first / in absolute path
 	if(path[0] == '/')
@@ -256,7 +275,8 @@ char* resolveShortcut(char* path){
 			}
 			else{
 				printf("Error: '~' can only be used at the start of the path\n");
-				return "\0";				}
+				strcpy(cwd, " \0");
+				return cwd;				}
 		}
 		//move up a directory if possible when .. is found, else error
 		else if(strcmp(instr.tokens[i],"..\0") == 0){
@@ -264,7 +284,8 @@ char* resolveShortcut(char* path){
 			while(cwd[j] != '/'){
 				if(j == 1){
 					printf("Error: Cannot go past root directory\n");
-					return "\0";	
+					strcpy(cwd, " \0");
+					return cwd;
 				}
 				cwd[j] = '\0';
 				--j;
@@ -294,13 +315,15 @@ char* resolveShortcut(char* path){
 				}
 				else{
 					printf("Error: Files can only appear at the end of a path\n");
-					return "\0";
+					strcpy(cwd," \0");
+					return cwd;
 				}
 			}
 			//misc token / unknown name
 			else{
 				printf("Error: File / directory '%s' not found\n",instr.tokens[i]);
-				return "\0";
+				strcpy(cwd, " \0");
+				return cwd;
 			}
 			free(temp);
 			buffer.st_mode = 0;
