@@ -53,7 +53,6 @@ int main() {
 			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
 
 			int i;
-			int is_path = 0;
 			int start = 0;
 			for (i = 0; i < strlen(token); i++) {
 				//pull out special characters and make them into a separate token in the instruction
@@ -83,7 +82,6 @@ int main() {
 			//free and reset variables
 			free(token);
 			free(temp);
-			is_path = 0;
 			token = NULL;
 			temp = NULL;
 		} while ('\n' != getchar());    //until end of line is reached
@@ -281,16 +279,17 @@ char* resolveShortcut(char* path){
 		//move up a directory if possible when .. is found, else error
 		else if(strcmp(instr.tokens[i],"..\0") == 0){
 			int j = strlen(cwd);
+			if(j <= 1){
+				printf("Error: Cannot go past root directory\n");
+                                strcpy(cwd, " \0");
+                                return cwd;
+			}
 			while(cwd[j] != '/'){
-				if(j == 1){
-					printf("Error: Cannot go past root directory\n");
-					strcpy(cwd, " \0");
-					return cwd;
-				}
 				cwd[j] = '\0';
 				--j;
 			}
-			cwd[strlen(cwd)-1] = '\0';
+			if(j != 0)
+				cwd[strlen(cwd)-1] = '\0';
 		}
 		//check if word is a file / directory
 		else if(strcmp(instr.tokens[i],".\0") != 0){
