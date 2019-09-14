@@ -2,10 +2,12 @@
 //Project 1
 //Joshua Rosenfield, Barrett McKinney, Ryan Kenney
 #include <stdio.h>
-#include <string.h> //strcmp
-#include <stdlib.h> //getenv
-#include <unistd.h> //getlogin_r, gethostname, getcwd
-#include <sys/stat.h> //check for files
+#include <string.h> 	//strcmp
+#include <stdlib.h> 	//getenv
+#include <unistd.h> 	//getlogin_r, gethostname, getcwd
+#include <sys/stat.h> 	//check for files
+#include <stdbool.h> 	//bool
+
 
 typedef struct
 {
@@ -38,7 +40,7 @@ int main() {
 	gethostname(hostarr, 256);
 	getcwd(cwdarr, 256);
 	//tests function for shortcuts
-        //char* test = resolveShortcut("~");
+        //char* test = resolveShortcut("input.txt");
 	//printf("%s\n",test);
 	while (1) {
 		getcwd(cwdarr, 256);
@@ -127,14 +129,96 @@ void addNull(instruction* instr_ptr)
 void executeTokens(instruction* instr_ptr)
 {
 	int i;
+	bool isRedirect, inputRedirect, outputRedirect;
+	isRedirect = false;
+        inputRedirect = false;
+        outputRedirect = false;
 	//print tokens
-	printf("Printing Tokens:\n");
-	for (i = 0; i < instr_ptr->numTokens; i++) {
-		if ((instr_ptr->tokens)[i] != NULL)
-			printf("%s\n", (instr_ptr->tokens)[i]);
-	}
-	printf("End print tokens\n");
+//	printf("Printing Tokens:\n");
+//	for (i = 0; i < instr_ptr->numTokens; i++) {
+//		if ((instr_ptr->tokens)[i] != NULL)
+//			printf("%s\n", (instr_ptr->tokens)[i]);
+//	}
+//	printf("End print tokens\n");
 	//end print tokens
+	
+	//char * redirect_path = NULL;
+	char * input_path = NULL;
+	char * output_path = NULL;
+
+	//execution for <> -- cat PATH NULL > output.txt
+	//6 tokens
+	if(instr_ptr->numTokens == 6 && (instr_ptr->tokens[1][0] == '<') && (instr_ptr->tokens[3][0] == '>')){
+		inputRedirect = true;
+        	outputRedirect = true;
+		
+		input_path = resolveShortcut(instr_ptr->tokens[2]);
+		if(*input_path == '\0')
+                	return;
+		instr_ptr->tokens[1] = input_path;
+                instr_ptr->tokens[2] = NULL;
+		
+		output_path = resolveShortcut(instr_ptr->tokens[4]);
+		if(*output_path == '\0')
+                	return;
+		instr_ptr->tokens[3] = NULL;
+                instr_ptr->tokens[4] = NULL;
+             
+		instr_ptr->numTokens = instr_ptr->numTokens - 3;				
+	}
+	//execution for >< 
+	else if(instr_ptr->numTokens == 6 && (instr_ptr->tokens[1][0] == '>') && (instr_ptr->tokens[3][0] == '<')){
+        	inputRedirect = true;
+                outputRedirect = true;
+
+		output_path = resolveShortcut(instr_ptr->tokens[2]);
+                if(*output_path == '\0')
+                        return;
+                instr_ptr->tokens[3] = NULL;
+                instr_ptr->tokens[2] = NULL;
+		
+                input_path = resolveShortcut(instr_ptr->tokens[4]);
+                if(*input_path == '\0')
+                        return;
+                instr_ptr->tokens[1] = input_path;
+                instr_ptr->tokens[4] = NULL;
+
+                instr_ptr->numTokens = instr_ptr->numTokens - 3;	
+	}
+
+	//check for Missing name for redirect
+	//execute simple < or > command
+	for (i = 0; i < instr_ptr->numTokens - 1; i++) {
+                if (instr_ptr->tokens[i][0] == '>' || instr_ptr->tokens[i][0] == '<' || instr_ptr->tokens[i][0] == '|'){
+                	isRedirect = true;
+			//error checking
+			if(isRedirect == true && instr_ptr->numTokens < 4){
+         			printf("Missing name for redirect.\n");
+                		return;
+        		}
+			if(instr_ptr->tokens[i][0] == '<'){
+                                inputRedirect = true;	
+				input_path = resolveShortcut(instr_ptr->tokens[i+1]);
+				//if file for redirection doesnt exit 
+				if(*input_path == '\0')
+					return;
+				instr_ptr->tokens[i] = input_path;
+				instr_ptr->tokens[i+1] = NULL;
+				instr_ptr->numTokens = instr_ptr->numTokens - 1;
+			}
+			else if(instr_ptr->tokens[i][0] == '>'){
+				outputRedirect = true;
+				output_path = resolveShortcut(instr_ptr->tokens[i+1]);
+				//if file for redirection doesnt exit 
+				if(*output_path == '\0')
+                                        return;
+                                instr_ptr->tokens[i] = NULL;
+                                instr_ptr->tokens[i+1] = NULL;
+                                instr_ptr->numTokens = instr_ptr->numTokens - 2;
+			}
+		}
+        }
+
 	//start of env implementation
 	for(i = 0; i < instr_ptr->numTokens - 1;i++){
 		if(instr_ptr->tokens[i][0] == '$'){
@@ -150,18 +234,10 @@ void executeTokens(instruction* instr_ptr)
 			}	
 		}
 	}
-/*
- *
- *
- *
-	$PATH resolution
- *
- *
- *
-*/
-//printf("%s\n", instr_ptr->tokens[0]);
-strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
-//printf("%s\n", instr_ptr->tokens[0]);
+
+	//$PATH resolution
+	strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
+	
 	//built ins
 	if(strcmp(instr_ptr->tokens[0], "exit") == 0){
 		printf("Exiting...\n");
@@ -174,25 +250,61 @@ strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
                         printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
         }
 	//do we neeed to even do this?
-	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
+	/*else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
 		for(i = 1;i < instr_ptr->numTokens;i++){
                 	if ((instr_ptr->tokens)[i] != NULL)
                         	printf("%s ", (instr_ptr->tokens)[i]);
         	}
 		printf("\n");
 	}
+	*/
 	//forks and execv 
 	else{
-	//char *const parmList[] = {"/bin/ls", "-ls", NULL};	//shows needed fromat...used for testing only
+	//char *const parmList[] = {"/bin/cat", "/home/majors/rosenfie/cop4610/proj1/input.txt", NULL};	//shows needed fromat...used for testing only
+		int fd0, fd1;
 		pid_t pid;
 		pid = fork();
-		if(pid == 0){
+		if(inputRedirect){
+			fd0 = open(input_path);
+		}
+		if(outputRedirect){
+			fd1 = creat(output_path);
+		}
+		if(pid == -1){
+        		perror("fork error");
+		}
+		else if(pid == 0){ 
+			if(inputRedirect && outputRedirect){
+				close(STDOUT_FILENO);
+                               	dup(fd1);
+				close(fd1);
+				
+				close(STDIN_FILENO);
+				dup(fd0);
+				close(fd0);	
+			} 
+			else if(inputRedirect){
+				close(STDIN_FILENO);
+				dup(fd0);
+				close(fd0);
+			
+			}
+			else if(outputRedirect){
+				close(STDOUT_FILENO);
+				dup(fd1);	
+				close(fd1);
+			}
 			//execv(parmList[0], parmList); //used for testing only
 			execv(instr_ptr->tokens[0], instr_ptr->tokens);
 			printf("%s: Command not found\n", instr_ptr->tokens[0]);	
+			return;
 		}
 		else{
-			 while(wait(NULL) != pid);
+			if(inputRedirect)
+				close(fd0);
+			if(outputRedirect)
+                                close(fd1);
+			while(wait(NULL) != pid);
 		}
 	}
 }
@@ -205,14 +317,15 @@ void clearInstruction(instruction* instr_ptr)
 	free(instr_ptr->tokens);
 	instr_ptr->tokens = NULL;
 	instr_ptr->numTokens = 0;
-	//instr_ptr->exitTotal = 0;
 }
 
 char* resolveShortcut(char* path){
 	//printf("%s\n",path);
 	int i;
 	instruction instr;
-
+	
+	
+	
 	int start = 0; //saves location of / in path
 	//skip first / in absolute path
 	if(path[0] == '/')
@@ -347,28 +460,31 @@ char* pathResolution(char* cmd){
 			paths_array[++counter] = env_path + i + 1;
             }
 	}	
-//	for(i = 0;i < total_colon;i++){
-//		printf("%s\n", paths_array[i]);
-//	}
-	
+
+	//for(i = 0;i < total_colon;i++){
+	//printf("%s\n", paths_array[i]);
+	//}
+
 	//need to add cmd to the end of every path then check them if it exist: else error
 	//what do i need instead of 400?
 	char temp[2056];
 	//char *temp = malloc(sizeof(char) * 400);
-	for(i = 0; i < path_length;i++){
+	for(i = 0; i < total_colon;i++){
 		strcpy(temp, paths_array[i]);
 		strcat(temp, "/");
 		strcat(temp, cmd);
-		if(access(temp,F_OK) != -1){
+		//printf("%s\n",temp);
+		if(access(temp, F_OK) != -1){
 			cmd = temp;
 			free(paths_array);
 			return cmd;
-		}	
+		}		
 	}
-	printf("doesnt exist\n");
+	//printf("doesnt exist\n");
 	free(paths_array);
 	return cmd;
 }
+
 
 
 
