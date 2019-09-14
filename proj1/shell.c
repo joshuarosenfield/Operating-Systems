@@ -150,12 +150,12 @@ void executeTokens(instruction* instr_ptr)
         inputRedirect = false;
         outputRedirect = false;
 	//print tokens
-//	printf("Printing Tokens:\n");
-//	for (i = 0; i < instr_ptr->numTokens; i++) {
-//		if ((instr_ptr->tokens)[i] != NULL)
-//			printf("%s\n", (instr_ptr->tokens)[i]);
-//	}
-//	printf("End print tokens\n");
+	//printf("Printing Tokens:\n");
+	//for (i = 0; i < instr_ptr->numTokens; i++) {
+	//	if ((instr_ptr->tokens)[i] != NULL)
+	//		printf("%s\n", (instr_ptr->tokens)[i]);
+	//}
+	//printf("End print tokens\n");
 	//end print tokens
 	
 	//char * redirect_path = NULL;
@@ -168,14 +168,14 @@ void executeTokens(instruction* instr_ptr)
 		inputRedirect = true;
         	outputRedirect = true;
 		
-		input_path = resolveShortcut(instr_ptr->tokens[2]);
-		if(*input_path == '\0')
+		input_path = instr_ptr->tokens[2];
+		if(input_path == '\0')
                 	return;
 		instr_ptr->tokens[1] = input_path;
                 instr_ptr->tokens[2] = NULL;
 		
-		output_path = resolveShortcut(instr_ptr->tokens[4]);
-		if(*output_path == '\0')
+		output_path = instr_ptr->tokens[4];
+		if(output_path == '\0')
                 	return;
 		instr_ptr->tokens[3] = NULL;
                 instr_ptr->tokens[4] = NULL;
@@ -187,14 +187,14 @@ void executeTokens(instruction* instr_ptr)
         	inputRedirect = true;
                 outputRedirect = true;
 
-		output_path = resolveShortcut(instr_ptr->tokens[2]);
-                if(*output_path == '\0')
+		output_path = instr_ptr->tokens[2];
+                if(output_path == '\0')
                         return;
                 instr_ptr->tokens[3] = NULL;
                 instr_ptr->tokens[2] = NULL;
 		
-                input_path = resolveShortcut(instr_ptr->tokens[4]);
-                if(*input_path == '\0')
+                input_path = instr_ptr->tokens[4];
+                if(input_path == '\0')
                         return;
                 instr_ptr->tokens[1] = input_path;
                 instr_ptr->tokens[4] = NULL;
@@ -214,9 +214,9 @@ void executeTokens(instruction* instr_ptr)
         		}
 			if(instr_ptr->tokens[i][0] == '<'){
                                 inputRedirect = true;	
-				input_path = resolveShortcut(instr_ptr->tokens[i+1]);
+				input_path = instr_ptr->tokens[i+1];
 				//if file for redirection doesnt exit 
-				if(*input_path == '\0')
+				if(input_path == '\0')
 					return;
 				instr_ptr->tokens[i] = input_path;
 				instr_ptr->tokens[i+1] = NULL;
@@ -224,9 +224,9 @@ void executeTokens(instruction* instr_ptr)
 			}
 			else if(instr_ptr->tokens[i][0] == '>'){
 				outputRedirect = true;
-				output_path = resolveShortcut(instr_ptr->tokens[i+1]);
+				output_path = instr_ptr->tokens[i+1];
 				//if file for redirection doesnt exit 
-				if(*output_path == '\0')
+				if(output_path == '\0')
                                         return;
                                 instr_ptr->tokens[i] = NULL;
                                 instr_ptr->tokens[i+1] = NULL;
@@ -504,6 +504,7 @@ char* pathResolution(char* cmd){
 	free(paths_array);
 	return cmd;
 }
+
 
 
 
