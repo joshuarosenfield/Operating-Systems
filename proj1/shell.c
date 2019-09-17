@@ -369,7 +369,7 @@ void executeTokens(instruction* instr_ptr)
 							//close(fdpipe[i][1]);
 							//close(fdpipe[i][0]);
 
-							fprintf(stderr,"test%d\n",i);
+							//fprintf(stderr,"test%d\n",i);
 							execv(cmds[i].tokens[0],cmds[i].tokens);
 							return;
 						}
@@ -382,7 +382,7 @@ void executeTokens(instruction* instr_ptr)
 						close(fdpipe[i][0]);
 						close(fdpipe[i][1]);
 					}
-					fprintf(stderr,"testfinal\n");
+					//fprintf(stderr,"testfinal\n");
 					execv(cmds[i].tokens[0], cmds[i].tokens);
 					return;
 				}
