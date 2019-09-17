@@ -93,7 +93,7 @@ int main() {
 		//check for . and / in each token to determine if path; if so expand it
 		for(i = 0; i < instr.numTokens; ++i){
 			for(j = 0; j < strlen(instr.tokens[i]); ++j){
-				if(instr.tokens[i][j] == '/' || instr.tokens[i][j] == '.'){
+				if(instr.tokens[i][j] == '/' || instr.tokens[i][j] == '.' || instr.tokens[i][j] == '~'){
 					instr.tokens[i] = resolveShortcut(instr.tokens[i]);
 					if(strcmp(instr.tokens[i]," \0") == 0)
 						invalid_path = 1;
@@ -145,10 +145,12 @@ void addNull(instruction* instr_ptr)
 void executeTokens(instruction* instr_ptr)
 {
 	int i;
-	bool isRedirect, inputRedirect, outputRedirect;
+	bool isRedirect, inputRedirect, outputRedirect, pipeRedirect;
+	int numPipes = 0;
 	isRedirect = false;
         inputRedirect = false;
         outputRedirect = false;
+	pipeRedirect = false;
 	//print tokens
 	//printf("Printing Tokens:\n");
 	//for (i = 0; i < instr_ptr->numTokens; i++) {
@@ -205,7 +207,7 @@ void executeTokens(instruction* instr_ptr)
 	//check for Missing name for redirect
 	//execute simple < or > command
 	for (i = 0; i < instr_ptr->numTokens - 1; i++) {
-                if (instr_ptr->tokens[i][0] == '>' || instr_ptr->tokens[i][0] == '<' || instr_ptr->tokens[i][0] == '|'){
+                if (instr_ptr->tokens[i][0] == '>' || instr_ptr->tokens[i][0] == '<'){
                 	isRedirect = true;
 			//error checking
 			if(isRedirect == true && instr_ptr->numTokens < 4){
@@ -232,6 +234,15 @@ void executeTokens(instruction* instr_ptr)
                                 instr_ptr->tokens[i+1] = NULL;
                                 instr_ptr->numTokens = instr_ptr->numTokens - 2;
 			}
+		}
+
+		if(instr_ptr->tokens[i][0] == '|'){
+			if(i == 0 || i == instr_ptr->numTokens - 2 || instr_ptr->tokens[i+1][0] == '|'){
+				printf("Invalid pipe syntax\n");
+				return;
+			}
+			pipeRedirect = true;
+			++numPipes;
 		}
         }
 
@@ -278,8 +289,20 @@ void executeTokens(instruction* instr_ptr)
 	else{
 	//char *const parmList[] = {"/bin/cat", "/home/majors/rosenfie/cop4610/proj1/input.txt", NULL};	//shows needed fromat...used for testing only
 		int fd0, fd1;
+		int** fdpipe;
 		pid_t pid;
 		pid = fork();
+		//Create and populate pipe array
+		if(pipeRedirect){
+			fdpipe = (int**)malloc((numPipes)*sizeof(int*));
+			for(i = 0; i < numPipes; ++i){
+				fdpipe[i] = (int*)malloc(2*sizeof(int));
+				if(pipe(fdpipe[i]) == -1){
+					printf("Pipe error\n");
+					return;
+				}
+			}
+		}
 		if(inputRedirect){
 			fd0 = open(input_path);
 		}
@@ -289,10 +312,84 @@ void executeTokens(instruction* instr_ptr)
 		if(pid == -1){
         		perror("fork error");
 		}
-		else if(pid == 0){ 
+		else if(pid == 0){
+		       	if(pipeRedirect){
+				if(numPipes > 2){
+					fprintf(stderr,"More than 2 pipe\n");
+					return;
+				}
+				int j = 0;
+				//Create instruction array for individual pipe commands
+				instruction* cmds = (instruction*)malloc((numPipes+2)*sizeof(instruction));
+				cmds->numTokens = numPipes+1;
+
+				//Populate instruction array
+				for(i = 0; i < numPipes+1; ++i){
+					int k;
+					cmds[i].numTokens = 0;
+					for(k = 0; j < instr_ptr->numTokens-1 && instr_ptr->tokens[j][0] != '|'; ++k,++j){
+						addToken(&cmds[i],instr_ptr->tokens[j]);
+					}
+					addNull(&cmds[i]);
+					strcpy(cmds[i].tokens[0], pathResolution(cmds[i].tokens[0]));
+					//Make sure a valid command is found
+					if(cmds[i].tokens[0][0] != '/'){
+						fprintf(stderr,"%s: Command not found\n",cmds[i].tokens[0]);
+						return;
+					}
+					++j;
+				}
+				//Fork to begin pipe
+				pid_t temp_pid1 = fork();
+
+				//Change stdout of first call
+				if(temp_pid1 == 0){
+					close(STDOUT_FILENO);
+					dup(fdpipe[0][1]);
+					close(fdpipe[0][1]);
+					//close(fdpipe[0][0]);
+
+					execv(cmds[0].tokens[0],cmds[0].tokens);
+					return;
+
+				}
+				else
+				{
+					//For more than one pipe
+					for(i = 1; i < numPipes; ++i){
+						pid_t temp_pid2 = fork();
+						if(temp_pid2 == 0){
+							close(STDIN_FILENO);
+							dup(fdpipe[i-1][0]);
+							//close(fdpipe[i-1][0]);
+							close(fdpipe[i-1][1]);
+
+							close(STDOUT_FILENO);
+							dup(fdpipe[i][1]);
+							//close(fdpipe[i][1]);
+							//close(fdpipe[i][0]);
+
+							fprintf(stderr,"test%d\n",i);
+							execv(cmds[i].tokens[0],cmds[i].tokens);
+							return;
+						}
+					}
+
+					wait(NULL);
+					close(STDIN_FILENO);
+					dup(fdpipe[numPipes-1][0]);
+					for(i = 0; i < numPipes; ++i){
+						close(fdpipe[i][0]);
+						close(fdpipe[i][1]);
+					}
+					fprintf(stderr,"testfinal\n");
+					execv(cmds[i].tokens[0], cmds[i].tokens);
+					return;
+				}
+			}
 			if(inputRedirect && outputRedirect){
 				close(STDOUT_FILENO);
-                               	dup(fd1);
+                            	dup(fd1);
 				close(fd1);
 				
 				close(STDIN_FILENO);
@@ -316,6 +413,12 @@ void executeTokens(instruction* instr_ptr)
 			return;
 		}
 		else{
+			if(pipeRedirect){
+				for(i = 0; i < numPipes; ++i){
+					close(fdpipe[i][0]);
+					close(fdpipe[i][1]);
+				}
+			}
 			if(inputRedirect)
 				close(fd0);
 			if(outputRedirect)
@@ -383,7 +486,7 @@ char* resolveShortcut(char* path){
 				strcpy(cwd,getenv("HOME"));
 			}
 			else{
-				printf("Error: '~' can only be used at the start of the path\n");
+				fprintf(stderr,"Error: '~' can only be used at the start of the path\n");
 				strcpy(cwd, " \0");
 				return cwd;				}
 		}
@@ -391,7 +494,7 @@ char* resolveShortcut(char* path){
 		else if(strcmp(instr.tokens[i],"..\0") == 0){
 			int j = strlen(cwd);
 			if(j <= 1){
-				printf("Error: Cannot go past root directory\n");
+				fprintf(stderr,"Error: Cannot go past root directory\n");
                                 strcpy(cwd, " \0");
                                 return cwd;
 			}
@@ -424,14 +527,14 @@ char* resolveShortcut(char* path){
 					strcpy(cwd,temp);
 				}
 				else{
-					printf("Error: Files can only appear at the end of a path\n");
+					fprintf(stderr,"Error: Files can only appear at the end of a path\n");
 					strcpy(cwd," \0");
 					return cwd;
 				}
 			}
 			//misc token / unknown name
 			else{
-				printf("Error: File / directory '%s' not found\n",instr.tokens[i]);
+				fprintf(stderr,"Error: File / directory '%s' not found\n",instr.tokens[i]);
 				strcpy(cwd, " \0");
 				return cwd;
 			}
