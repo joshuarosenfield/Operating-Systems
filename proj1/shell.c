@@ -14,6 +14,7 @@ typedef struct
 	char** tokens;
 	int numTokens;
 	int exitTotal;	//exit command
+	int bgExecuting;
 } instruction;
 
 void addToken(instruction* instr_ptr, char* tok);
@@ -31,7 +32,8 @@ int main() {
 	instr.tokens = NULL;
 	instr.numTokens = 0;
 	instr.exitTotal = 0;	//initial exit 
-
+	instr.bgExecuting = 0;
+	
 	//user login
 	char loginarr[256];
 	char hostarr[256];
@@ -52,8 +54,14 @@ int main() {
 		do {
 			//scans for next token and allocates token var to size of scanned token
 			scanf("%ms", &token);
-			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
+			
+			//first cmd = & skip
+			if(strcmp(token, "&") == 0 && instr.numTokens == 0)
+				continue;
+			
 
+			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
+			
 			int i;
 			int start = 0;
 			for (i = 0; i < strlen(token); i++) {
@@ -145,25 +153,38 @@ void addNull(instruction* instr_ptr)
 void executeTokens(instruction* instr_ptr)
 {
 	int i;
-	bool isRedirect, inputRedirect, outputRedirect, pipeRedirect;
+	bool isRedirect, inputRedirect, outputRedirect, pipeRedirect, bgProcess;
 	int numPipes = 0;
 	isRedirect = false;
         inputRedirect = false;
+	bgProcess = false;
         outputRedirect = false;
 	pipeRedirect = false;
 	//print tokens
-	//printf("Printing Tokens:\n");
-	//for (i = 0; i < instr_ptr->numTokens; i++) {
-	//	if ((instr_ptr->tokens)[i] != NULL)
-	//		printf("%s\n", (instr_ptr->tokens)[i]);
-	//}
-	//printf("End print tokens\n");
+//	printf("Printing Tokens:\n");
+//	for (i = 0; i < instr_ptr->numTokens; i++) {
+//		if ((instr_ptr->tokens)[i] != NULL)
+//			printf("%s\n", (instr_ptr->tokens)[i]);
+//	}
+//	printf("End print tokens\n");
 	//end print tokens
+
+	//if background process add to amount executing
+	for(i = 0; i < instr_ptr->numTokens-1;i++){
+		if(instr_ptr->tokens[i][0] == '&'){
+			instr_ptr->tokens[i] = NULL;
+			instr_ptr->numTokens--;
+			bgProcess = true;
+			instr_ptr->bgExecuting++;
+		}
+	}
+
 	
 	//char * redirect_path = NULL;
 	char * input_path = NULL;
 	char * output_path = NULL;
 
+	
 	//execution for <> -- cat PATH NULL > output.txt
 	//6 tokens
 	if(instr_ptr->numTokens == 6 && (instr_ptr->tokens[1][0] == '<') && (instr_ptr->tokens[3][0] == '>')){
@@ -269,22 +290,24 @@ void executeTokens(instruction* instr_ptr)
 	if(strcmp(instr_ptr->tokens[0], "exit") == 0){
 		printf("Exiting...\n");
 		printf("\tCommands executed: %d\n",instr_ptr->exitTotal);
+		while(instr_ptr->bgExecuting != 0)
+     			pause();
 		exit(1); 
 	}
 	// cd not finished
-	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
+	else if(strcmp(instr_ptr->tokens[0], "/bin/cd") == 0){
                 if(chdir(instr_ptr->tokens[1]) != 0)
                         printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
         }
 	//do we neeed to even do this?
-	/*else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
+	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
 		for(i = 1;i < instr_ptr->numTokens;i++){
                 	if ((instr_ptr->tokens)[i] != NULL)
                         	printf("%s ", (instr_ptr->tokens)[i]);
         	}
 		printf("\n");
 	}
-	*/
+	
 	//forks and execv 
 	else{
 	//char *const parmList[] = {"/bin/cat", "/home/majors/rosenfie/cop4610/proj1/input.txt", NULL};	//shows needed fromat...used for testing only
@@ -607,6 +630,7 @@ char* pathResolution(char* cmd){
 	free(paths_array);
 	return cmd;
 }
+
 
 
 
