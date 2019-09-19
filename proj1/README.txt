@@ -15,7 +15,7 @@ Compile Directions
 - make and run shell executable
 
 -------------------------------------------------
-Divison of Labor
+Division of Labor
 
 Joshua Rosenfield
 - Part 2: Environmental Variables
@@ -29,12 +29,10 @@ Ryan Kenney
 - Part 8: Pipes
 
 Barrett McKinney
-- something
-- something
+- 
 
 -------------------------------------------------
 Known Bugs
-- exit command may or may not quit on first try
 
 -------------------------------------------------
 

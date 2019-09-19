@@ -292,7 +292,7 @@ void executeTokens(instruction* instr_ptr)
 		printf("\tCommands executed: %d\n",instr_ptr->exitTotal);
 		while(instr_ptr->bgExecuting != 0)
      			pause();
-		exit(1); 
+		exit(0);
 	}
 	// cd not finished
 	else if(strcmp(instr_ptr->tokens[0], "/bin/cd") == 0){
@@ -433,7 +433,7 @@ void executeTokens(instruction* instr_ptr)
 			//execv(parmList[0], parmList); //used for testing only
 			execv(instr_ptr->tokens[0], instr_ptr->tokens);
 			printf("%s: Command not found\n", instr_ptr->tokens[0]);	
-			return;
+            exit(1);
 		}
 		else{
 			if(pipeRedirect){
