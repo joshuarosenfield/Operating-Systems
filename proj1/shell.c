@@ -318,10 +318,17 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
                 if(chdir(instr_ptr->tokens[1]) != 0)
                         printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
         }
-	//do we neeed to even do this?
+	//Echo
 	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
 		for(i = 1;i < instr_ptr->numTokens;i++){
-                	if ((instr_ptr->tokens)[i] != NULL)
+			if(instr_ptr->tokens[i][0] == '$'){
+				//Check if valid env variable
+				if(strcmp(instr_ptr->tokens[i],getenv(instr_ptr->tokens[i])) != NULL)
+					printf("%s ", getenv(instr_ptr->tokens[i]));
+				else
+					printf("%s not found.\n");	
+			}
+			else if (instr_ptr->tokens[i] != NULL)
                         	printf("%s ", (instr_ptr->tokens)[i]);
         	}
 		printf("\n");
