@@ -7,6 +7,7 @@
 #include <unistd.h> 	//getlogin_r, gethostname, getcwd
 #include <sys/stat.h> 	//check for files
 #include <stdbool.h> 	//bool
+#include <signal.h>	//kill
 
 
 typedef struct
@@ -121,7 +122,6 @@ int main() {
 				strcat(bgprocesses.command[bgprocesses.numProcess],instr.tokens[j]);
 			}
 		}
-
 		//check for . and / in each token to determine if path; if so expand it
 		for(i = 0; i < instr.numTokens; ++i){
 			for(j = 0; j < strlen(instr.tokens[i]); ++j){
@@ -314,7 +314,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 		exit(0);
 	}
 	// cd not finished
-	else if(strcmp(instr_ptr->tokens[0], "/bin/cd") == 0){
+	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
                 if(chdir(instr_ptr->tokens[1]) != 0)
                         printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
         }
@@ -341,7 +341,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 				fdpipe[i] = (int*)malloc(2*sizeof(int));
 				if(pipe(fdpipe[i]) == -1){
 					printf("Pipe error\n");
-					return;
+					kill(getpid(), SIGKILL);
 				}
 			}
 		}
@@ -358,7 +358,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 		       	if(pipeRedirect){
 				if(numPipes > 2){
 					fprintf(stderr,"More than 2 pipe\n");
-					return;
+					kill(getpid(), SIGKILL);
 				}
 				int j = 0;
 				//Create instruction array for individual pipe commands
@@ -376,11 +376,11 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 					//Make sure a valid command is found
 					if(cmds[i].tokens[0][0] != '/'){
 						fprintf(stderr,"%s: Command not found\n",cmds[i].tokens[0]);
-						return;
+						kill(getpid(), SIGKILL);
 					}
 					if(instr_ptr->tokens[j-1][0] == '&'){
 						fprintf(stderr,"Invalid syntax\n");
-						return;
+						kill(getpid(), SIGKILL);
 					}
 					++j;
 				}
@@ -388,7 +388,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 				pid_t temp_pid_1 = fork();
 				if(temp_pid_1 == -1){
 					fprintf(stderr,"Fork error.\n");
-					return;
+					kill(getpid(), SIGKILL);
 				}
 				else if(temp_pid_1 == 0){
 					close(STDOUT_FILENO);
@@ -397,8 +397,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 					//close(fdpipe[0][0]);
 
 					execv(cmds[0].tokens[0],cmds[0].tokens);
-					return;
-
+					kill(getpid(), SIGKILL);
 				}
 				else
 				{
@@ -408,6 +407,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 						pid_t temp_pid_2 = fork();
 						if(temp_pid_2 == -1){
 							fprintf(stderr,"Forker error.\n");
+							kill(getpid(), SIGKILL);
 						}
 						else if(temp_pid_2 == 0){
 							close(STDIN_FILENO);
@@ -422,7 +422,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 
 							//fprintf(stderr,"test%d\n",i);
 							execv(cmds[i].tokens[0],cmds[i].tokens);
-							return;
+							kill(getpid(), SIGKILL);
 						}
 						else{
 							pipe_pid_2 = temp_pid_2;
@@ -444,7 +444,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 						close(fdpipe[i][1]);
 					}
 					execv(cmds[i].tokens[0], cmds[i].tokens);
-					return;
+					kill(getpid(), SIGKILL);
 				}
 			}
 			if(inputRedirect && outputRedirect){
@@ -467,9 +467,10 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 				dup(fd1);	
 				close(fd1);
 			}
-			//execv(parmList[0], parmList); //used for testing only
 			execv(instr_ptr->tokens[0], instr_ptr->tokens);
-			printf("%s: Command not found\n", instr_ptr->tokens[0]);	
+			printf("%s: Command not found\n", instr_ptr->tokens[0]);
+			kill(getpid(), SIGKILL);
+	
 		}
 		else{
 			if(pipeRedirect){
@@ -488,7 +489,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 				if(!pipeRedirect){
 					printf("[%d]    [%d]\n", bg_ptr->numProcess, bg_ptr->pids[bg_ptr->numProcess]);
 				}
-				usleep(10000); //Fixes output for instant commands; does it matter?
+				usleep(1000); //Fixes output for instant commands; does it matter?
 				bg_ptr->numProcess++;
 			}
 			else{
@@ -501,8 +502,8 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 				int processes = bg_ptr->numProcess;
 				//Check each process to see if finished
 				for(i = 0; i < processes; ++i){
+					//printf("\n%d\n\n",waitpid(bg_ptr->pids[i],&status,WNOHANG));
 					if(waitpid(bg_ptr->pids[i], &status, WNOHANG) < 0){
-						//printf("%s\n",bg_ptr->command[i]);
 						printf("[%d]+    [%s]\n", i, bg_ptr->command[i]);
 						bg_ptr->pids[i] = -1;
 						memset(bg_ptr->command[i],'\0', 256);
@@ -514,9 +515,9 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 					if(bg_ptr->pids[i] == -1){
 						int j;
 						for(j = i; j < processes-1; ++j){
-							bg_ptr->pids[i] = bg_ptr->pids[i+1];
-							strcpy(bg_ptr->command[i],bg_ptr->command[i+1]);
-							memset(bg_ptr->command[i+1],'\0',256);
+							bg_ptr->pids[j] = bg_ptr->pids[j+1];
+							strcpy(bg_ptr->command[j],bg_ptr->command[j+1]);
+							memset(bg_ptr->command[j+1],'\0',256);
 							
 						}
 					}
