@@ -123,13 +123,15 @@ int main() {
 			}
 		}
 		//check for . and / in each token to determine if path; if so expand it
-		for(i = 0; i < instr.numTokens; ++i){
-			for(j = 0; j < strlen(instr.tokens[i]); ++j){
-				if(instr.tokens[i][j] == '/' || instr.tokens[i][j] == '.' || instr.tokens[i][j] == '~'){
-					instr.tokens[i] = resolveShortcut(instr.tokens[i]);
-					if(strcmp(instr.tokens[i]," \0") == 0)
-						invalid_path = 1;
-					break;
+		if(strcmp(instr.tokens[0], "echo\0") != 0){
+			for(i = 0; i < instr.numTokens; ++i){
+				for(j = 0; j < strlen(instr.tokens[i]); ++j){
+					if(instr.tokens[i][j] == '/' || instr.tokens[i][j] == '.' || instr.tokens[i][j] == '~'){
+						instr.tokens[i] = resolveShortcut(instr.tokens[i]);
+						if(strcmp(instr.tokens[i]," \0") == 0)
+							invalid_path = 1;
+						break;
+					}
 				}
 			}
 		}
@@ -301,7 +303,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 	}
 
 	//$PATH resolution
-	strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
+	//strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
 	
 	//built ins
 	if(strcmp(instr_ptr->tokens[0], "exit") == 0 && instr_ptr->numTokens == 2){
@@ -315,13 +317,19 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 	}
 	// cd not finished
 	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
-                if(chdir(instr_ptr->tokens[1]) != 0)
+
+		if(instr_ptr->numTokens > 3)
+			printf("Too many arguments.\n");
+		else if(instr_ptr->numTokens == 2){
+			chdir(getenv("HOME"));
+		}	
+		else if(chdir(instr_ptr->tokens[1]) != 0)
                         printf("%s: No such file or directory.\n", instr_ptr->tokens[1]);
         }
 	//Echo
 	else if(strcmp(instr_ptr->tokens[0], "echo") == 0){
 		for(i = 1;i < instr_ptr->numTokens;i++){
-			if(instr_ptr->tokens[i][0] == '$'){
+			if(instr_ptr->tokens[i] != NULL && instr_ptr->tokens[i][0] == '$'){
 				//Check if valid env variable
 				if(strcmp(instr_ptr->tokens[i],getenv(instr_ptr->tokens[i])) != NULL)
 					printf("%s ", getenv(instr_ptr->tokens[i]));
@@ -336,7 +344,7 @@ void executeTokens(instruction* instr_ptr, bg_struct * bg_ptr)
 	
 	//forks and execv 
 	else{
-	//char *const parmList[] = {"/bin/cat", "/home/majors/rosenfie/cop4610/proj1/input.txt", NULL};	//shows needed fromat...used for testing only
+		strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
 		int fd0, fd1;
 		int** fdpipe;
 		pid = fork();
