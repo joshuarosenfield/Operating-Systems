@@ -58,9 +58,7 @@ int main() {
   getlogin_r(loginarr, 256);
   gethostname(hostarr, 256);
   getcwd(cwdarr, 256);
-  // tests function for shortcuts
-  // char* test = resolveShortcut("input.txt");
-  // printf("%s\n",test);
+
   while (1) {
     getcwd(cwdarr, 256);
     printf("%s@%s : %s>", loginarr, hostarr, cwdarr);
@@ -237,14 +235,6 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
   pipeRedirect = false;
   int status;
   pid_t pid, pipe_pid_1, pipe_pid_2;
-  // print tokens
-  //	printf("Printing Tokens:\n");
-  //	for (i = 0; i < instr_ptr->numTokens; i++) {
-  //		if ((instr_ptr->tokens)[i] != NULL)
-  //			printf("%s\n", (instr_ptr->tokens)[i]);
-  //	}
-  //	printf("End print tokens\n");
-  // end print tokens
 
   // char * redirect_path = NULL;
   char *input_path = NULL;
@@ -339,20 +329,13 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
   for (i = 0; i < instr_ptr->numTokens - 1; i++) {
     if (instr_ptr->tokens[i][0] == '$') {
       if (getenv(instr_ptr->tokens[i] + 1) == NULL) {
-        // strcpy(instr_ptr->tokens[1], strcat(instr_ptr->tokens[i]+1,  ":
-        // Undefined variable."));
         printf("%s: Undefined variable.\n", instr_ptr->tokens[i]);
         return; // end this command
-        // TODO::make this only print
       } else { // copys $*** to its token
         strcpy(instr_ptr->tokens[i], getenv(instr_ptr->tokens[i] + 1));
-        // printf("%s\n", instr_ptr->tokens[i]);
       }
     }
   }
-
-  //$PATH resolution
-  // strcpy(instr_ptr->tokens[0], pathResolution(instr_ptr->tokens[0]));
 
   // built ins
   if (strcmp(instr_ptr->tokens[0], "exit") == 0 && instr_ptr->numTokens == 2) {
@@ -477,10 +460,7 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
 
               close(STDOUT_FILENO);
               dup(fdpipe[i][1]);
-              // close(fdpipe[i][1]);
-              // close(fdpipe[i][0]);
 
-              // fprintf(stderr,"test%d\n",i);
               execv(cmds[i].tokens[0], cmds[i].tokens);
               kill(getpid(), SIGKILL);
             } else {
@@ -535,7 +515,9 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
         for (i = 0; i < numPipes; ++i) {
           close(fdpipe[i][0]);
           close(fdpipe[i][1]);
+          free(fdpipe[i]);
         }
+        free(fdpipe);
       }
       if (inputRedirect)
         close(fd0);
@@ -561,7 +543,6 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
         int processes = bg_ptr->numProcess;
         // Check each process to see if finished
         for (i = 0; i < processes; ++i) {
-          // printf("\n%d\n\n",waitpid(bg_ptr->pids[i],&status,WNOHANG));
           if (waitpid(bg_ptr->pids[i], &status, WNOHANG) < 0) {
             printf("[%d]+    [%s]\n", i, bg_ptr->command[i]);
             bg_ptr->pids[i] = -1;
@@ -595,7 +576,6 @@ void clearInstruction(instruction *instr_ptr) {
 }
 
 char *resolveShortcut(char *path) {
-  // printf("%s\n",path);
   int i;
   instruction instr;
   instr.tokens = NULL;
@@ -618,7 +598,6 @@ char *resolveShortcut(char *path) {
       if (strcmp(temp, "\0") != 0) {
         addToken(&instr, temp);
       }
-      // printf("%d %s\n", instr.numTokens,instr.tokens[instr.numTokens-1]);
       free(temp);
     }
   }
@@ -703,22 +682,17 @@ char *resolveShortcut(char *path) {
 }
 
 char *pathResolution(char *cmd) {
-  // printf("cmd = %s\n", cmd);
   char **paths_array; // array for possible paths
   int total_colon, path_length, counter, i;
   total_colon = 0;
   counter = 0;
-
-  // char * env_path = getenv("PATH");
 
   char *test_path = getenv("PATH");
   int test_path_length = strlen(test_path);
   char env_path[test_path_length];
   strcpy(env_path, test_path);
 
-  // printf("env path = %s\n", env_path);
   path_length = strlen(env_path);
-  // printf("%d", char_length_path);
   // add up amount of : (paths)
   for (i = 0; i < path_length; i++) {
     if (env_path[i] == ':') {
@@ -726,7 +700,6 @@ char *pathResolution(char *cmd) {
       total_colon++;
     }
   }
-  // printf("colon count = %d\n" , total_colon);
   // env_path = path with \0 instead of :
   if (total_colon == 0)
     return cmd;
@@ -739,26 +712,19 @@ char *pathResolution(char *cmd) {
     }
   }
 
-  // for(i = 0;i < total_colon;i++){
-  // printf("%s\n", paths_array[i]);
-  //}
-
   // need to add cmd to the end of every path then check them if it exist: else
   // error what do i need instead of 400?
   char temp[2056];
-  // char *temp = malloc(sizeof(char) * 400);
   for (i = 0; i < total_colon; i++) {
     strcpy(temp, paths_array[i]);
     strcat(temp, "/");
     strcat(temp, cmd);
-    // printf("%s\n",temp);
     if (access(temp, F_OK) != -1) {
       cmd = temp;
       free(paths_array);
       return cmd;
     }
   }
-  // printf("doesnt exist\n");
   free(paths_array);
   return cmd;
 }
