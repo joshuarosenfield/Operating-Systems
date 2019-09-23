@@ -12,7 +12,7 @@ Contents of Tar
 - makefile
 
 Compile Directions
-- make and run shell executable
+- make and run shell executable (./shell)
 
 -------------------------------------------------
 Division of Labor
