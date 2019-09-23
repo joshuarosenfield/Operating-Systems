@@ -123,7 +123,10 @@ int main() {
     if (strcmp(instr.tokens[0], "alias") == 0) {
       strcpy(commands[aliasCount].shortcut, instr.tokens[1]);
       strcpy(commands[aliasCount].aliasCommand, instr.tokens[3]);
-      strcpy(commands[aliasCount].option, instr.tokens[4]);
+      if (instr.numTokens == 5) {
+        strcpy(commands[aliasCount].option, instr.tokens[4]);
+      }
+
       clearInstruction(&instr);
       aliasCount++;
       instr.exitTotal++;
@@ -147,7 +150,9 @@ int main() {
           // Replacing the given command with the stored command
           strcpy(instr.tokens[0], commands[commandCount].aliasCommand);
           // add the option token
-          addToken(&instr, commands[commandCount].option);
+          if (commands[commandCount].option != NULL) {
+            addToken(&instr, commands[commandCount].option);
+          }
         }
       }
 
