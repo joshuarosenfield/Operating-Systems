@@ -27,9 +27,10 @@ Joshua Rosenfield
 Ryan Kenney
 - Part 4: Shortcut Resolution 
 - Part 8: Pipes
+- Part 9: Background Processing
 
 Barrett McKinney
-- 
+- Part 10: Built-ins
 
 -------------------------------------------------
 Known Bugs
