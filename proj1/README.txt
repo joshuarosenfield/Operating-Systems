@@ -8,8 +8,10 @@ Group Names:
 -------------------------------------------------
 Contents of Tar
 
+- README
 - shell.c
 - makefile
+- git commit log
 
 Compile Directions
 - make and run shell executable (./shell)
