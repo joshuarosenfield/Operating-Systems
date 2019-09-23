@@ -362,7 +362,7 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
     for (i = 1; i < instr_ptr->numTokens; i++) {
       if (instr_ptr->tokens[i] != NULL && instr_ptr->tokens[i][0] == '$') {
         // Check if valid env variable
-        if (strcmp(instr_ptr->tokens[i], getenv(instr_ptr->tokens[i])) != NULL)
+        if (strcmp(instr_ptr->tokens[i], getenv(instr_ptr->tokens[i])) == 0)
           printf("%s ", getenv(instr_ptr->tokens[i]));
         else
           printf("Variable not found.\n");
