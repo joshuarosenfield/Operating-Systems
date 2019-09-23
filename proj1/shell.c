@@ -365,7 +365,7 @@ void executeTokens(instruction *instr_ptr, bg_struct *bg_ptr) {
         if (strcmp(instr_ptr->tokens[i], getenv(instr_ptr->tokens[i])) != NULL)
           printf("%s ", getenv(instr_ptr->tokens[i]));
         else
-          printf("%s not found.\n");
+          printf("Variable not found.\n");
       } else if (instr_ptr->tokens[i] != NULL)
         printf("%s ", (instr_ptr->tokens)[i]);
     }
