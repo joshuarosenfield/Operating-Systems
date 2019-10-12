@@ -17,7 +17,19 @@ MODULE_DESCRIPTION("Simple elevator scheduler module");
 #define OFFLINE 4
 #define floors 5
 
-#define MODULE_NAME "elevator"
+static char *message;
+static int read;
+
+int proc_open(struct inode *sp_inode, struct file *sp_file) {
+  printk("Proc Open\n");
+  read = 1;
+  message = kmalloc(sizeof(char) * 2048, __GFP_RECLAIM | __GFP_IO | __GFP_FS);
+  if (message == NULL) {
+    printk("Error: OpenModule");
+    return -ENOMEM;
+  }
+  return 0;
+}
 
 static void ExitModule(void) {
   remove_proc_entry(MODULE_NAME, NULL);
