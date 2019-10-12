@@ -1,5 +1,7 @@
 #include <linux/init.h>
+#include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/linkage.h>
 #include <linux/proc_fs.h>
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -51,7 +53,10 @@ void thread_init_parameter(struct thread_parameter *parm){
 	parm->cnt = 0;
 	thread1.kthread = kthread_run(scheduler,parm,"thread %d",parm->id);
 }
-int start_elevator(void){
+
+extern long (*STUB_start_elevator)(void);
+long start_elevator(void){
+	printk(KERN_NOTICE "%s\n", __FUNCTION__);
 	/*
 	if(active == 0){
 		state = 1;
@@ -69,8 +74,11 @@ int start_elevator(void){
 	*/
 	return 1;
 }
-int issue_elevator_request(int passenger_type, int start_floor, int destination_floor){
-	/*
+
+extern long (*STUB_issue_request)(int, int, int);
+long issue_request(int passenger_type, int start_floor, int destination_floor){
+	printk(KERN_NOTICE "%s: pass->%d, start_floor->%d, destination->%d\n", __FUNCTION__,passenger_type,start_floor,destination_floor);
+/*
 	person * p = kmalloc(sizeof(person)*1,__GFP_RECLAIM);
 	if(p == null)
 		return -ENOMEM;
@@ -79,10 +87,13 @@ int issue_elevator_request(int passenger_type, int start_floor, int destination_
 	*/
 	return 1;
 }
-int stop_elevator(void){
+
+extern long (*STUB_stop_elevator)(void);
+long stop_elevator(void){
 	//kthread_stop(thread1.kthread);
 	return 1;
 }
+
 int elevator_open(struct inode *sp_inode, struct file *sp_file) {
 	printk(KERN_INFO "proc called open\n");
 	
@@ -114,25 +125,34 @@ int elevator_release(struct inode *sp_inode, struct file *sp_file) {
 
 static int elevator_init(void) {
 	printk(KERN_NOTICE "/proc/%s create\n",ENTRY_NAME);
+	/*
 	fops.open = elevator_open;
 	fops.read = elevator_read;
 	fops.release = elevator_release;
 	active = 0;
 	state = 0;
-
+*/
+	STUB_start_elevator = &(start_elevator);
+        STUB_issue_request = &(issue_request);
+        STUB_stop_elevator = &(stop_elevator);
+/*
 	//start_elevator();
 	if (!proc_create(ENTRY_NAME, PERMS, NULL, &fops)) {
 		printk(KERN_WARNING "proc create\n");
 		remove_proc_entry(ENTRY_NAME, NULL);
 		return -ENOMEM;
 	}
-	
+*/	
 	return 0;
 }
 module_init(elevator_init);
 
 static void elevator_exit(void) {
 	//stop_elevator();
-	remove_proc_entry(ENTRY_NAME, NULL);
+	//remove_proc_entry(ENTRY_NAME, NULL);
+	STUB_start_elevator = NULL;
+        STUB_issue_request = NULL;
+        STUB_stop_elevator = NULL;
+
 }
 module_exit(elevator_exit);
