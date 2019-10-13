@@ -1,0 +1,1 @@
+obj-y := start_elevator.c issue_request.c stop_elevator.c
