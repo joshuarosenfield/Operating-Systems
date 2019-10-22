@@ -10,6 +10,7 @@
 #include <linux/kthread.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
+#include <linux/delay.h> //sleep
 
 void printFloors(void);
 
@@ -38,61 +39,49 @@ static int state; //0: OFFLINE, 1: IDLE, 2: LOADING, 3: UP, 4: DOWN
 //static int floor;
 static int i;
 static int currents;
-
+static int should_stop;
 static int passengersServiced;
-
+static int elevator_direction;
 struct list_head elevator;
 struct list_head floors[NUMFLOORS];
 
 struct mutex addPassenger;
 
-struct thread_parameter{
-	int id;
-	int cnt;
-	struct task_struct *kthread;
-};
+struct task_struct* elevator_thread;
+
 struct person{
 	struct list_head list;
 	int type;
 	int startFloor;
 	int destinationFloor;
 };
-struct  thread_parameter thread1;
+
 int scheduler(void *data){
 	//struct thread_parameter *parm = data;
 	static int i = 0;
 	while(!kthread_should_stop()){
-
+		if((!should_stop) && (elevator_direction == IDLE))
+			printk("running");
+		else
+			printk("stopped");
+		ssleep(2);
 	}
 	printk(KERN_INFO "test: %d", i);
 	return 0;
 }
-void thread_init_parameter(struct thread_parameter *parm){
-	static int id = 1;
-
-	parm->id = id++;
-	parm->cnt = 0;
-	thread1.kthread = kthread_run(scheduler,parm,"thread %d",parm->id);
-}
 
 extern long (*STUB_start_elevator)(void);
 long start_elevator(void){
-	printk(KERN_NOTICE "%s\n", __FUNCTION__);
-	/*
-	if(active == 0){
-		state = 1;
-		floor = 1;
-		active = 1;
-		thread1.id = 1;
-		thread1.cnt = 0;
-		thread_init_parameter(&thread1);
-		return 0;
+	//TODO::add return 1 if the elevator is already active
+	printk(KERN_NOTICE "%s starting elevator function\n", __FUNCTION__);
+	if(elevator_direction == OFFLINE) {
+        	printk("starting elevator\n");
+        	elevator_direction = IDLE;
+        	return 0;
 	}
-	if(active == 1){
-		return 1;
-	}
-	return -ENOMEM;
-	*/
+	else
+		return -ENOMEM;
+
 	return 1;
 }
 
@@ -118,8 +107,12 @@ long issue_request(int passenger_type, int start_floor, int destination_floor){
 
 extern long (*STUB_stop_elevator)(void);
 long stop_elevator(void){
-	//kthread_stop(thread1.kthread);
-	return 1;
+	printk(KERN_INFO "stopping elevator\n");
+    if (should_stop)
+        return 1;
+    else
+	should_stop = 1;
+    return 0;
 }
 
 int elevator_open(struct inode *sp_inode, struct file *sp_file) {
@@ -163,7 +156,7 @@ static int elevator_init(void) {
         STUB_stop_elevator = &(stop_elevator);
 
 	mutex_init(&addPassenger);
-
+	elevator_direction = OFFLINE;
 	active = 0;
         state = 0;
 	currents = 0;
@@ -175,6 +168,9 @@ static int elevator_init(void) {
         	i++;
     	}
 	i = 0;
+
+	elevator_thread = kthread_run(scheduler, NULL, "elevator thread init");
+
 	//start_elevator();
 	if (!proc_create(ENTRY_NAME, PERMS, NULL, &fops)) {
 		printk(KERN_WARNING "proc create\n");
@@ -190,6 +186,10 @@ static void elevator_exit(void) {
 	printk(KERN_NOTICE "Removing /proc/%s.\n", ENTRY_NAME);
 	//stop_elevator();
 	remove_proc_entry(ENTRY_NAME, NULL);
+	kthread_stop(elevator_thread);
+
+	mutex_destroy(&addPassenger);
+
 	STUB_start_elevator = NULL;
         STUB_issue_request = NULL;
         STUB_stop_elevator = NULL;
