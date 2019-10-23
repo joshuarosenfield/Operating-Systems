@@ -42,6 +42,11 @@ static int currents;
 static int should_stop;
 static int passengersServiced;
 static int elevator_direction;
+static int current_floor;
+static int next_floor;
+static int number_passengers;
+static int weight;
+
 struct list_head elevator;
 struct list_head floors[NUMFLOORS];
 
@@ -58,7 +63,6 @@ struct person{
 
 int scheduler(void *data){
 	//struct thread_parameter *parm = data;
-	static int i = 0;
 	while(!kthread_should_stop()){
 		if((!should_stop) && (elevator_direction == IDLE))
 			printk("running");
@@ -66,7 +70,6 @@ int scheduler(void *data){
 			printk("stopped");
 		ssleep(2);
 	}
-	printk(KERN_INFO "test: %d", i);
 	return 0;
 }
 
@@ -118,24 +121,25 @@ long stop_elevator(void){
 int elevator_open(struct inode *sp_inode, struct file *sp_file) {
 	printk(KERN_INFO "proc called open\n");
 	read_p = 1;
-	message = kmalloc(sizeof(char) * ENTRY_SIZE, __GFP_RECLAIM | __GFP_IO | __GFP_FS);
+	message = kmalloc(sizeof(char) * 1024, __GFP_RECLAIM | __GFP_IO | __GFP_FS);
 	if (message == NULL) {
-		printk(KERN_WARNING "error elevator open");
+		printk(KERN_WARNING "elevator_open");
 		return -ENOMEM;
 	}
 	return 0;
 }
 
 ssize_t elevator_read(struct file *sp_file, char __user *buf, size_t size, loff_t *offset) {
-	int len = strlen(message);
+	//TODO::change movement state to string
+	sprintf(message, "Movement State: %d\nCurrent Floor: %d\nNext Floor: %d\nLoad Passengers: %d\nLoad Weight: %d\nPassengers Serviced: %d", elevator_direction, current_floor, next_floor, number_passengers, weight, passengersServiced);
 
 	read_p = !read_p;
 	if (read_p)
 		return 0;
 
-	printk(KERN_INFO "proc called read\n");
-	copy_to_user(buf, message, len);
-	return len;
+	printk(KERN_INFO "proc called elevator_read\n");
+	copy_to_user(buf, message, strlen(message));
+	return strlen(message);
 }
 
 int elevator_release(struct inode *sp_inode, struct file *sp_file) {
@@ -161,6 +165,11 @@ static int elevator_init(void) {
         state = 0;
 	currents = 0;
 	passengersServiced = 0;
+	current_floor = 0;
+	next_floor = 0;
+	number_passengers = 0;
+	weight = 0;
+
 	i = 0;
 
     	while (i < NUMFLOORS) {
@@ -183,9 +192,9 @@ static int elevator_init(void) {
 module_init(elevator_init);
 
 static void elevator_exit(void) {
+	remove_proc_entry(ENTRY_NAME, NULL);
 	printk(KERN_NOTICE "Removing /proc/%s.\n", ENTRY_NAME);
 	//stop_elevator();
-	remove_proc_entry(ENTRY_NAME, NULL);
 	kthread_stop(elevator_thread);
 
 	mutex_destroy(&addPassenger);
@@ -208,7 +217,7 @@ void printFloors(){
 		printk("floor->%d", i+1);
 		list_for_each(position, &floors[i]) {
             		thisPerson = list_entry(position, struct person, list);
-            		printk(KERN_NOTICE "floor position: %d\ntype: %d\nstart floor: %d\ndestination Floor: %d\n", currents, thisPerson->type, thisPerson->startFloor, thisPerson->destinationFloor);
+            		printk("floor position: %d\ntype: %d\nstart floor: %d\ndestination Floor: %d\n", currents, thisPerson->type, thisPerson->startFloor, thisPerson->destinationFloor);
             		currents = currents + 1;
 		}
 	i = i + 1;
