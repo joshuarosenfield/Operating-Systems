@@ -35,7 +35,7 @@ MODULE_DESCRIPTION("elevator module");
 #define DOWN 4
 
 #define NUMFLOORS 10
-#define MAXWEIGHT 15*2 //*2 for decimal weight
+#define MAXWEIGHT 15*2 	/* *2 for decimal weight*/
 #define MAXPASSENGERS 10
 
 static struct file_operations fops;
@@ -114,7 +114,7 @@ int scheduler(void *data){
 		}
 		else if(state == UP){ //Go up until the last floor, then turn around
 			if(current_floor != 10){
-				++current_floor;	
+				++current_floor;
 			}
 			else{
 				state = DOWN;
@@ -209,6 +209,16 @@ ssize_t elevator_read(struct file *sp_file, char __user *buf, size_t size, loff_
 		strcpy(state_message, "DOWN");
 	else
 		strcpy(state_message, "ERROR");
+
+	//for next floor
+	if(current_floor == 1)
+		next_floor = 2;
+	else if(current_floor == 10)
+		next_floor = 9;
+	else if(state == UP)
+		next_floor = current_floor + 1;
+	else if(state == DOWN)
+		next_floor = current_floor - 1;
 
 	//Handle child weight
 	//Currently always outputs as 'decimal'; not sure if that matters or not
