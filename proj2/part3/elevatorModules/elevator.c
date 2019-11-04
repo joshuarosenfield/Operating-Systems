@@ -75,6 +75,7 @@ struct task_struct* elevator_thread; //threaad
 
 struct person{
 	struct list_head list;
+	int valid;
 	int type;
 	int startFloor;
 	int destinationFloor;
@@ -83,7 +84,7 @@ struct person{
 int scheduler(void *data){
 	//struct thread_parameter *parm = data;
 	while(!kthread_should_stop()){
-		if((should_load() && !should_stop) || should_unload()){ //Load and/or unload on current floor
+		if(should_load() || should_unload()){ //Load and/or unload on current floor
 			//Wonky LOADING implementation; need to edit functions
 			//to handle state being LOADING
 			old_state = state;
@@ -97,8 +98,18 @@ int scheduler(void *data){
                                 unload_elevator();
                 }
 		if(should_stop && check_done()){
-			state = OFFLINE;
-			kthread_stop(elevator_thread);
+			if(current_floor == 1){
+				state = OFFLINE;
+				next_floor = 1;
+				printk(KERN_NOTICE "Elevator stopped and offline\n");
+				kthread_stop(elevator_thread);
+			}
+			else{
+				state = DOWN;
+				ssleep(2);
+				current_floor -= 1;
+				next_floor = current_floor - 1;
+			}
 		}
 		else if(state == IDLE && !check_done()){	//If at bottom and a request arrives, start
 			state = UP;
@@ -109,30 +120,29 @@ int scheduler(void *data){
 		}
 		else if(check_done()){ //If no more requests, move to bottom
 			state = DOWN;
-			--current_floor;
 			ssleep(2);
+			--current_floor;
 		}
 		else if(state == UP){ //Go up until the last floor, then turn around
 			if(current_floor != 10){
+				ssleep(2);
 				++current_floor;
 			}
 			else{
 				state = DOWN;
 			}
-			ssleep(2);
 		}
 		else if(state == DOWN){ //Go down until the first floor, then turn around
 			if(current_floor != 1){
+				ssleep(2);
 				--current_floor;
 			}
 			else{
 				state = UP;
 			}
-			ssleep(2);
 		}
 		//printk(KERN_NOTICE "State: %d, Floor: %d\n",state,current_floor);
 	}
-	printk(KERN_NOTICE "Elevator stopped and offline\n");
 	return 0;
 }
 
@@ -144,6 +154,13 @@ long start_elevator(void){
         	printk("starting elevator\n");
    		state = IDLE;
 		should_stop = 0;
+		//Validate entries made after elevator stopped
+		for(temp_int = 0; temp_int < NUMFLOORS; ++temp_int){
+			list_for_each_safe(temp, dummy, &floors[temp_int]){
+				thisPerson = list_entry(temp, struct person, list);
+			       	thisPerson->valid = 1;	
+			}
+		}
 		elevator_thread = kthread_run(scheduler, NULL, "elevator thread init");
         	return 0;
 	}
@@ -156,6 +173,8 @@ long start_elevator(void){
 extern long (*STUB_issue_request)(int, int, int);
 long issue_request(int passenger_type, int start_floor, int destination_floor){
 	//TODO::add if parameters are outobounds and make return 1
+	if(passenger_type < 1 || passenger_type > 4 || start_floor < 1 || start_floor > 10 || destination_floor < 1 || destination_floor > 10)
+	       return 1;	
 	printk(KERN_NOTICE "%s: pass->%d, start_floor->%d, destination->%d\n", __FUNCTION__,passenger_type,start_floor,destination_floor);
 	if(start_floor == destination_floor)
 	        passengersServiced++;
@@ -164,12 +183,16 @@ long issue_request(int passenger_type, int start_floor, int destination_floor){
 		newPerson->type = passenger_type;
     		newPerson->startFloor = start_floor;
     		newPerson->destinationFloor = destination_floor;
+		if(should_stop)
+			newPerson->valid = 0; //Invalidate new requests while stopping
+		else
+			newPerson->valid = 1;
 		mutex_lock_interruptible(&waitingPassenger);
     		list_add_tail(&newPerson->list, &floors[start_floor - 1]);
     		mutex_unlock(&waitingPassenger);
 		//printFloors();
 	}
-	return 1;
+	return 0;
 }
 
 extern long (*STUB_stop_elevator)(void);
@@ -196,6 +219,9 @@ int elevator_open(struct inode *sp_inode, struct file *sp_file) {
 }
 
 ssize_t elevator_read(struct file *sp_file, char __user *buf, size_t size, loff_t *offset) {
+
+	mutex_lock_interruptible(&insideElevator);
+
 	//String movement state
 	if(state == OFFLINE)
 		strcpy(state_message, "OFFLINE");
@@ -230,6 +256,7 @@ ssize_t elevator_read(struct file *sp_file, char __user *buf, size_t size, loff_
 
 	sprintf(message, "Movement State: %s\nCurrent Floor: %d\nNext Floor: %d\nLoad Passengers: %d\nLoad Weight: %d.%d\nPassengers Serviced: %d\n", state_message, current_floor, next_floor, number_passengers, elevator_weight/2, temp_int, passengersServiced);
 
+	mutex_unlock(&insideElevator);
 	read_p = !read_p;
 	if (read_p)
 		return 0;
@@ -358,7 +385,7 @@ void load_elevator(void){
                         temp_capacity = 2;
                 }
                 //If moving in same direction as elevator and can fit in the elevator
-                if(temp_int == state && elevator_weight + temp_weight <= MAXWEIGHT && number_passengers + temp_capacity <= MAXPASSENGERS){
+                if(temp_int == state && elevator_weight + temp_weight <= MAXWEIGHT && number_passengers + temp_capacity <= MAXPASSENGERS && thisPerson->valid == 1){
 			printk(KERN_NOTICE "Passenger picked up, floor %d\n", current_floor);
                         elevator_weight += temp_weight;
                         number_passengers += temp_capacity;
@@ -417,8 +444,9 @@ int should_load(void){
 	temp_int = 0;
 	list_for_each(temp,&floors[current_floor-1]){
                 thisPerson = list_entry(temp, struct person, list);
-        	if((thisPerson->destinationFloor - thisPerson->startFloor >= 0 && state == UP) ||
-		   (thisPerson->startFloor - thisPerson->destinationFloor >= 0 && state == DOWN)){
+        	if(((thisPerson->destinationFloor - thisPerson->startFloor >= 0 && state == UP) ||
+		   (thisPerson->startFloor - thisPerson->destinationFloor >= 0 && state == DOWN)) &&
+		    thisPerson->valid == 1){
 			temp_int = 1;
 		}
 
@@ -429,7 +457,7 @@ int should_load(void){
 }
 
 int should_unload(void){
-	mutex_lock_interruptible(&waitingPassenger);
+	mutex_lock_interruptible(&insideElevator);
 
 	temp_int = 0;
         list_for_each(temp,&elevator){
@@ -440,20 +468,31 @@ int should_unload(void){
 
         }
 
-        mutex_unlock(&waitingPassenger);
+	mutex_unlock(&insideElevator);
 	return temp_int;
 }
 //Check if there are any requests
 int check_done(void){
-	if(!elevator_weight == 0 && !number_passengers == 0)
+	mutex_lock_interruptible(&waitingPassenger);
+	mutex_lock_interruptible(&insideElevator);
+
+	if(!elevator_weight == 0 && !number_passengers == 0){
+		mutex_unlock(&insideElevator);
+		mutex_unlock(&waitingPassenger);
 		return 0;
+	}
 	for(i = 0; i < NUMFLOORS; ++i){
-		if(should_stop) //Don't check for passengers if stopping
-			break;
 		list_for_each(temp, &floors[i]){
-			return 0;
+			thisPerson = list_entry(temp, struct person, list);
+			if(thisPerson->valid == 1){
+				mutex_unlock(&insideElevator);
+				mutex_unlock(&waitingPassenger);
+				return 0;
+			}
 		}
 	}
+	mutex_unlock(&insideElevator);
+	mutex_unlock(&waitingPassenger);
 	return 1;
 }
 /*
