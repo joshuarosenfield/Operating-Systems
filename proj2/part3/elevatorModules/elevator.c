@@ -245,6 +245,10 @@ ssize_t elevator_read(struct file *sp_file, char __user *buf, size_t size, loff_
 		next_floor = current_floor + 1;
 	else if(state == DOWN)
 		next_floor = current_floor - 1;
+	else if((state == LOADING) && (old_state == UP))
+		next_floor = current_floor + 1;
+	else if((state == LOADING) && (old_state == DOWN))
+		next_floor = current_floor - 1;
 
 	//Handle child weight
 	//Currently always outputs as 'decimal'; not sure if that matters or not
