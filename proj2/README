@@ -1,0 +1,26 @@
+Contains:
+
+Part 1 (Directory)
+	part1.c
+Part 2 (Directory)
+	my_xtime.c
+	Makefile
+Part 3 (Directory)
+	elevator.c
+	Makefile
+
+
+Makefiles executed with 'make' in directory of corresponding file.
+Part 2 inserted with sudo insmod my_xtime.ko
+Part 3 inserted with sudo insmod elevator.ko
+
+All portions of the project are completed and there are no known bugs
+at the time of submission.
+
+Division of labor:
+
+Part 1: Joshua Rosenfield
+
+Part 2: Ryan Kenney
+
+Part 3: Joshua Rosenfield and Ryan Kenney
