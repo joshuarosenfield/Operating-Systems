@@ -85,7 +85,35 @@ int main(int argc, char** argv) {
 }
 
 void executeCommand(instruction *instr_ptr){
-	printTokens(instr_ptr);
+        //printTokens(instr_ptr);
+        if(strcmp(instr_ptr->tokens[0], "exit") == 0)
+                printf("call exit function\n");
+        else if(strcmp(instr_ptr->tokens[0], "info") == 0)
+                printf("call info function\n");
+        else if(strcmp(instr_ptr->tokens[0], "size") == 0)
+                printf("call size function\n");
+        else if(strcmp(instr_ptr->tokens[0], "ls") == 0)
+                printf("call ls function\n");
+        else if(strcmp(instr_ptr->tokens[0], "cd") == 0)
+                printf("call cd function\n");
+        else if(strcmp(instr_ptr->tokens[0], "creat") == 0)
+                printf("call creat function\n");
+        else if(strcmp(instr_ptr->tokens[0], "mkdir") == 0)
+                printf("call mkdir function\n");
+        else if(strcmp(instr_ptr->tokens[0], "open") == 0)
+                printf("call open function\n");
+        else if(strcmp(instr_ptr->tokens[0], "close") == 0)
+                printf("call close function\n");
+        else if(strcmp(instr_ptr->tokens[0], "read") == 0)
+                printf("call read function\n");
+        else if(strcmp(instr_ptr->tokens[0], "write") == 0)
+                printf("call write function\n");
+        else if(strcmp(instr_ptr->tokens[0], "rm") == 0)
+                printf("call rm function\n");
+        else if(strcmp(instr_ptr->tokens[0], "rmdir") == 0)
+                printf("call rmdir function\n");
+        else
+                printf("input not valid");
 }
 
 
