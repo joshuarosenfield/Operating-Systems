@@ -1,22 +1,36 @@
-//COP4610
-//Project 3
-//example code for initial parsing
+//COP4610 Project 3
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h> //uint8
 
+/* STRUCT DEFINITIONS */
 typedef struct
 {
 	char** tokens;
 	int numTokens;
 } instruction;
 
+typedef struct
+{
+    uint8_t BS_OEMName[8];
+} __attribute__((packed)) boot_sector_struct;
+/* END STRUCT DEFINITIONS */
+
+/* GLOBAL VARIABLES */
+ boot_sector_struct* bootSector;
+/* END GLOBAL VARIABLES */
+
+/* FUNCTION DEFINITIONS */
 void addToken(instruction* instr_ptr, char* tok);
 void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
-void executeCommand(instruction *instr_ptr);
+void executeCommand(instruction* instr_ptr);
+void info(boot_sector_struct* bs);
+boot_sector_struct * bootSectorParse(void);
+/* END FUNCTION DEFINITIONS */
 
 int main(int argc, char** argv) {
 	char* token = NULL;
@@ -33,10 +47,7 @@ int main(int argc, char** argv) {
 
 	while (1) {
 		printf("enter command here->");
-
-		// loop reads character sequences separated by whitespace
 		do {
-			//scans for next token and allocates token var to size of scanned token
 			scanf("%ms", &token);
 			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
 
@@ -50,23 +61,18 @@ int main(int argc, char** argv) {
 						temp[i-start] = '\0';
 						addToken(&instr, temp);
 					}
-
 					char specialChar[2];
 					specialChar[0] = token[i];
 					specialChar[1] = '\0';
-
 					addToken(&instr,specialChar);
-
 					start = i + 1;
 				}
 			}
-
 			if (start < strlen(token)) {
 				memcpy(temp, token + start, strlen(token) - start);
 				temp[i-start] = '\0';
 				addToken(&instr, temp);
 			}
-
 			//free and reset variables
 			free(token);
 			free(temp);
@@ -74,52 +80,68 @@ int main(int argc, char** argv) {
 			token = NULL;
 			temp = NULL;
 		} while ('\n' != getchar());    //until end of line is reached
-
 		addNull(&instr);
 		//printTokens(&instr);
+		
+		
+		
+		bootSector = bootSectorParse();
 		executeCommand(&instr);
 		clearInstruction(&instr);
 	}
-
+	free(bootSector);
 	return 0;
 }
 
 void executeCommand(instruction *instr_ptr){
-        //printTokens(instr_ptr);
-        if(strcmp(instr_ptr->tokens[0], "exit") == 0)
-                printf("call exit function\n");
-        else if(strcmp(instr_ptr->tokens[0], "info") == 0)
+	//printTokens(instr_ptr);
+	if(strcmp(instr_ptr->tokens[0], "exit") == 0)
+		printf("call exit function\n");
+	else if(strcmp(instr_ptr->tokens[0], "info") == 0){
                 printf("call info function\n");
-        else if(strcmp(instr_ptr->tokens[0], "size") == 0)
+		info(bootSector);
+	}
+	else if(strcmp(instr_ptr->tokens[0], "size") == 0)
                 printf("call size function\n");
-        else if(strcmp(instr_ptr->tokens[0], "ls") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "ls") == 0)
                 printf("call ls function\n");
-        else if(strcmp(instr_ptr->tokens[0], "cd") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "cd") == 0)
                 printf("call cd function\n");
-        else if(strcmp(instr_ptr->tokens[0], "creat") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "creat") == 0)
                 printf("call creat function\n");
-        else if(strcmp(instr_ptr->tokens[0], "mkdir") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "mkdir") == 0)
                 printf("call mkdir function\n");
-        else if(strcmp(instr_ptr->tokens[0], "open") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "open") == 0)
                 printf("call open function\n");
-        else if(strcmp(instr_ptr->tokens[0], "close") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "close") == 0)
                 printf("call close function\n");
-        else if(strcmp(instr_ptr->tokens[0], "read") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "read") == 0)
                 printf("call read function\n");
-        else if(strcmp(instr_ptr->tokens[0], "write") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "write") == 0)
                 printf("call write function\n");
-        else if(strcmp(instr_ptr->tokens[0], "rm") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "rm") == 0)
                 printf("call rm function\n");
-        else if(strcmp(instr_ptr->tokens[0], "rmdir") == 0)
+	else if(strcmp(instr_ptr->tokens[0], "rmdir") == 0)
                 printf("call rmdir function\n");
-        else
-                printf("input not valid");
+	else
+		printf("input not valid");
 }
+/* PART 1 - 13 */
+void info(boot_sector_struct* bs){
+	//TODO::finish
+	printf("inside boot function\n");
+}
+/* END PART 1 - 13 */
 
+/* FUNCTION PARSES BOOT SECTOR */
+boot_sector_struct * bootSectorParse(){
+	printf("inside parse boot sector function\n");
+	boot_sector_struct * bs = malloc(sizeof(boot_sector_struct));
+	return bs;
+}
+/* END FUNCTION PARSE BOOT SECTOR */
 
-
-//reallocates instruction array to hold another token
-//allocates for new token within instruction array
+/* PARSING FUNCTIONS */
 void addToken(instruction* instr_ptr, char* tok)
 {
 	//extend token array to accomodate an additional token
@@ -168,4 +190,4 @@ void clearInstruction(instruction* instr_ptr)
 	instr_ptr->tokens = NULL;
 	instr_ptr->numTokens = 0;
 }
-
+/* END PARSING FUNCTIONS */
