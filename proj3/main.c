@@ -11,15 +11,21 @@ typedef struct
 	char** tokens;
 	int numTokens;
 } instruction;
-
+// unit depends bytes needed
 typedef struct
 {
-    uint8_t BS_OEMName[8];
+	uint8_t BS_jmpBoot[3];
+	uint8_t BS_OEMName[8];
+	uint16_t BPB_BytsPerSec;
 } __attribute__((packed)) boot_sector_struct;
 /* END STRUCT DEFINITIONS */
 
+/* 1 TO PRINT TEST PRINTOUTS */
+int testPrints = 1;
+
 /* GLOBAL VARIABLES */
- boot_sector_struct* bootSector;
+boot_sector_struct* bootSector;
+char* imagePath;
 /* END GLOBAL VARIABLES */
 
 /* FUNCTION DEFINITIONS */
@@ -28,6 +34,7 @@ void printTokens(instruction* instr_ptr);
 void clearInstruction(instruction* instr_ptr);
 void addNull(instruction* instr_ptr);
 void executeCommand(instruction* instr_ptr);
+void func_exit();
 void info(boot_sector_struct* bs);
 boot_sector_struct * bootSectorParse(void);
 /* END FUNCTION DEFINITIONS */
@@ -41,12 +48,16 @@ int main(int argc, char** argv) {
 	instr.numTokens = 0;
 	
 	if(!argv[1]){
-		printf("arguemnt error");
+		printf("arguemnt error\nexiting...\n");
 		exit(1);
 	}
-
+	// SET IMAGE PATH
+	imagePath = argv[1];
+	printf("Welcome to the ./FAT32 shell utility\n");
+	bootSector = bootSectorParse();
+	printf("Image %s, is ready to view\n", argv[1]);
 	while (1) {
-		printf("enter command here->");
+		printf("/] ");
 		do {
 			scanf("%ms", &token);
 			temp = (char*)malloc((strlen(token) + 1) * sizeof(char));
@@ -83,9 +94,6 @@ int main(int argc, char** argv) {
 		addNull(&instr);
 		//printTokens(&instr);
 		
-		
-		
-		bootSector = bootSectorParse();
 		executeCommand(&instr);
 		clearInstruction(&instr);
 	}
@@ -95,51 +103,116 @@ int main(int argc, char** argv) {
 
 void executeCommand(instruction *instr_ptr){
 	//printTokens(instr_ptr);
-	if(strcmp(instr_ptr->tokens[0], "exit") == 0)
-		printf("call exit function\n");
+	if(strcmp(instr_ptr->tokens[0], "exit") == 0){
+		if(testPrints)
+			printf("call exit function\n");
+		func_exit();
+	}
 	else if(strcmp(instr_ptr->tokens[0], "info") == 0){
-                printf("call info function\n");
+                if(testPrints)
+			printf("call info function\n");
 		info(bootSector);
 	}
-	else if(strcmp(instr_ptr->tokens[0], "size") == 0)
-                printf("call size function\n");
-	else if(strcmp(instr_ptr->tokens[0], "ls") == 0)
-                printf("call ls function\n");
-	else if(strcmp(instr_ptr->tokens[0], "cd") == 0)
-                printf("call cd function\n");
-	else if(strcmp(instr_ptr->tokens[0], "creat") == 0)
-                printf("call creat function\n");
-	else if(strcmp(instr_ptr->tokens[0], "mkdir") == 0)
-                printf("call mkdir function\n");
-	else if(strcmp(instr_ptr->tokens[0], "open") == 0)
-                printf("call open function\n");
-	else if(strcmp(instr_ptr->tokens[0], "close") == 0)
-                printf("call close function\n");
-	else if(strcmp(instr_ptr->tokens[0], "read") == 0)
-                printf("call read function\n");
-	else if(strcmp(instr_ptr->tokens[0], "write") == 0)
-                printf("call write function\n");
-	else if(strcmp(instr_ptr->tokens[0], "rm") == 0)
-                printf("call rm function\n");
-	else if(strcmp(instr_ptr->tokens[0], "rmdir") == 0)
-                printf("call rmdir function\n");
+	else if(strcmp(instr_ptr->tokens[0], "size") == 0){
+        	if(testPrints)
+		       printf("call size function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "ls") == 0){
+        	if(testPrints)
+		        printf("call ls function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
+        	if(testPrints)
+		       printf("call cd function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "creat") == 0){
+         	if(testPrints)
+		      printf("call creat function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "mkdir") == 0){
+         	if(testPrints)
+ 		       printf("call mkdir function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "open") == 0){
+        	if(testPrints)
+	       		printf("call open function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "close") == 0){
+                if(testPrints)
+			printf("call close function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "read") == 0){
+        	if(testPrints)
+			printf("call read function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "write") == 0){
+        	if(testPrints)
+		       printf("call write function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "rm") == 0){
+        	 if(testPrints)
+			printf("call rm function\n");
+	}
+	else if(strcmp(instr_ptr->tokens[0], "rmdir") == 0){
+         	if(testPrints)
+		      printf("call rmdir function\n");
+	}
 	else
-		printf("input not valid");
+		printf("input invalid\n");
 }
 /* PART 1 - 13 */
-void info(boot_sector_struct* bs){
+void info(boot_sector_struct* bs_ptr){
 	//TODO::finish
-	printf("inside boot function\n");
+	if(testPrints)
+		printf("inside boot function\n");
+	int i;
+	for(i = 0; i < 3;i++)
+		printf("BS_jmpBoot: 0x%X\n", bs_ptr->BS_jmpBoot[i]);
+	printf("BS_OEMName: ");
+	for(i; i < 11;i++){
+		printf("%c", bs_ptr->BS_OEMName[i-3]);
+	}
+	printf("\n");
+	printf("BPB_BytsPerSec: 0x%X\n", bs_ptr->BPB_BytsPerSec);
+}
+
+void func_exit(){
+	//TODO::finish
+	if(testPrints)
+                printf("inside exit function\n");
+	exit(0);
 }
 /* END PART 1 - 13 */
 
 /* FUNCTION PARSES BOOT SECTOR */
 boot_sector_struct * bootSectorParse(){
-	printf("inside parse boot sector function\n");
-	boot_sector_struct * bs = malloc(sizeof(boot_sector_struct));
-	return bs;
+	if(testPrints)
+		printf("inside parse boot sector function\n");
+	int i, c;
+	unsigned int byteOne, byteTwo;
+	FILE* file = fopen(imagePath, "r+");
+	if(!file){
+		printf("error opening %s\nexiting...\n",imagePath);
+		exit(1);
+	}	
+	boot_sector_struct * bs_ptr = malloc(sizeof(boot_sector_struct));
+	for(i = 0; i < 3;i++){
+		if(i < 3){
+			bs_ptr->BS_jmpBoot[i] = fgetc(file);	
+		}
+	}
+	for(i; i < 11;i++){
+		bs_ptr->BS_OEMName[i-3] = fgetc(file);	
+	}
+	byteOne = fgetc(file);
+	byteTwo = fgetc(file);
+	i += 2;	//i = 13
+	bs_ptr->BPB_BytsPerSec =((((byteOne) >> 8) & 0x00FF) | (((byteTwo) << 8) & 0xFF00) );
+	fclose(file);
+	
+	return bs_ptr;
 }
-/* END FUNCTION PARSE BOOT SECTOR */
+/* END BOOTSECTORPARSE() FUNCTION*/
 
 /* PARSING FUNCTIONS */
 void addToken(instruction* instr_ptr, char* tok)
