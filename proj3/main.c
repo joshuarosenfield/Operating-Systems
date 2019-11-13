@@ -17,6 +17,30 @@ typedef struct
 	uint8_t BS_jmpBoot[3];
 	uint8_t BS_OEMName[8];
 	uint16_t BPB_BytsPerSec;
+	uint8_t BPB_SecPerClus;
+	uint16_t BPB_RsvdSecCnt;
+	uint8_t BPB_NumFATs;
+	uint16_t BPB_RootEntCnt;
+	uint16_t BPB_TotSec16;
+	uint8_t BPB_Media;
+	uint16_t BPB_FATSz16;
+	uint16_t BPB_SecPerTrk;
+	uint16_t BPB_NumHeads;
+	uint32_t BPB_HiddSec;
+	uint32_t BPB_TotSec32;
+	uint32_t BPB_FATSz32;
+	uint16_t BPB_ExtFlags;
+	uint16_t BPB_FSVer;
+	uint32_t BPB_RootClus;
+	uint16_t BPB_FSInfo;
+	uint16_t BPB_BkBootSec;
+	uint8_t BPB_Reserved[12];
+	uint8_t BS_DrvNum;
+	uint8_t BS_Reserved1;
+	uint8_t BS_BootSig;
+	uint32_t BS_VolID;
+	uint8_t BS_VolLab[11];
+	uint8_t BS_FilSysType[8];
 } __attribute__((packed)) boot_sector_struct;
 /* END STRUCT DEFINITIONS */
 
@@ -169,11 +193,39 @@ void info(boot_sector_struct* bs_ptr){
 	for(i = 0; i < 3;i++)
 		printf("BS_jmpBoot: 0x%X\n", bs_ptr->BS_jmpBoot[i]);
 	printf("BS_OEMName: ");
-	for(i; i < 11;i++){
+	for(i; i < 11;i++)
 		printf("%c", bs_ptr->BS_OEMName[i-3]);
-	}
 	printf("\n");
 	printf("BPB_BytsPerSec: 0x%X\n", bs_ptr->BPB_BytsPerSec);
+	printf("BPB_SecPerClus: 0x%X\n", bs_ptr->BPB_SecPerClus);
+	printf("BPB_RsvdSecCnt: 0x%X\n", bs_ptr->BPB_RsvdSecCnt);
+	printf("BPB_NumFATs: 0x%X\n", bs_ptr->BPB_NumFATs);
+	printf("BPB_RootEntCnt: 0x%X\n", bs_ptr->BPB_RootEntCnt);
+	printf("BPB_TotSec16: 0x%X\n", bs_ptr->BPB_TotSec16);
+	printf("BPB_Media: 0x%X\n", bs_ptr->BPB_Media);
+	printf("BPB_FATSz16: 0x%X\n", bs_ptr->BPB_FATSz16);
+	printf("BPB_SecPerTrk: 0x%X\n", bs_ptr->BPB_SecPerTrk);
+	printf("BPB_NumHeads: 0x%X\n", bs_ptr->BPB_NumHeads);
+	printf("BPB_HiddSec: 0x%X\n", bs_ptr->BPB_HiddSec);
+	printf("BPB_TotSec32: 0x%X\n", bs_ptr->BPB_TotSec32);
+	printf("BPB_FATSz32: 0x%X\n", bs_ptr->BPB_FATSz32);
+	printf("BPB_ExtFlags: 0x%X\n", bs_ptr->BPB_ExtFlags);
+	printf("BPB_FSVer: 0x%X\n", bs_ptr->BPB_FSVer);
+	printf("BPB_RootClus: 0x%X\n", bs_ptr->BPB_RootClus);
+	printf("BPB_FSInfo: 0x%X\n", bs_ptr->BPB_FSInfo);
+	printf("BPB_BkBootSec: 0x%X\n", bs_ptr->BPB_BkBootSec);
+	for(i = 0; i < 12;i++)
+                printf("BPB_Reserved: 0x%X\n", bs_ptr->BPB_Reserved[i]);
+	printf("BS_DrvNum: 0x%X\n", bs_ptr->BS_DrvNum);
+	printf("BS_Reserved1: 0x%X\n", bs_ptr->BS_Reserved1);
+        printf("BS_BootSig: 0x%X\n", bs_ptr->BS_BootSig);
+        printf("BS_VolID: 0x%X\n", bs_ptr->BS_VolID);
+	for(i = 0; i < 11;i++)
+                printf("BS_VolLab: 0x%X\n", bs_ptr->BS_VolLab[i]);
+	printf("BS_OEMName: ");
+        for(i = 0; i < 8;i++)
+                printf("%c", bs_ptr->BS_FilSysType[i]);
+	printf("\n");
 }
 
 void func_exit(){
@@ -189,25 +241,116 @@ boot_sector_struct * bootSectorParse(){
 	if(testPrints)
 		printf("inside parse boot sector function\n");
 	int i, c;
-	unsigned int byteOne, byteTwo;
+	unsigned int byteOne, byteTwo, byteThree, byteFour;
 	FILE* file = fopen(imagePath, "r+");
 	if(!file){
 		printf("error opening %s\nexiting...\n",imagePath);
 		exit(1);
 	}	
 	boot_sector_struct * bs_ptr = malloc(sizeof(boot_sector_struct));
-	for(i = 0; i < 3;i++){
-		if(i < 3){
+	
+	for(i = 0; i < 3;i++)
 			bs_ptr->BS_jmpBoot[i] = fgetc(file);	
-		}
-	}
-	for(i; i < 11;i++){
-		bs_ptr->BS_OEMName[i-3] = fgetc(file);	
-	}
+	
+	for(i = 0; i < 8;i++)
+		bs_ptr->BS_OEMName[i] = fgetc(file);	
+	
+	
 	byteOne = fgetc(file);
 	byteTwo = fgetc(file);
-	i += 2;	//i = 13
-	bs_ptr->BPB_BytsPerSec =((((byteOne) >> 8) & 0x00FF) | (((byteTwo) << 8) & 0xFF00) );
+	bs_ptr->BPB_BytsPerSec = ((byteOne) | ((byteTwo) << 8));//( (((byteOne) >> 8) & 0x00FF) | (((byteTwo) << 8) & 0xFF00) );
+	
+	bs_ptr->BPB_SecPerClus = fgetc(file);
+	
+	byteOne = fgetc(file);
+        byteTwo = fgetc(file);
+        bs_ptr->BPB_RsvdSecCnt = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	
+	bs_ptr->BPB_NumFATs = fgetc(file);	//16
+	
+	byteOne = fgetc(file);//17
+        byteTwo = fgetc(file);//18
+        bs_ptr->BPB_RootEntCnt = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//19
+        byteTwo = fgetc(file);//20
+        bs_ptr->BPB_TotSec16 = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	bs_ptr->BPB_Media = fgetc(file);//22
+
+	byteOne = fgetc(file);//22
+        byteTwo = fgetc(file);//23
+        bs_ptr->BPB_FATSz16 = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//24
+        byteTwo = fgetc(file);//25
+        bs_ptr->BPB_SecPerTrk = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//26
+        byteTwo = fgetc(file);//27
+        bs_ptr->BPB_NumHeads = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//28
+        byteTwo = fgetc(file);//29
+	byteThree = fgetc(file);//30
+	byteFour = fgetc(file);//31
+        bs_ptr->BPB_HiddSec = (byteFour<<24) | (byteThree<<16) | (byteTwo<<8) | byteOne; 
+
+	byteOne = fgetc(file);//32
+        byteTwo = fgetc(file);//33
+        byteThree = fgetc(file);//34
+        byteFour = fgetc(file);//35
+        bs_ptr->BPB_TotSec32 = (byteFour<<24) | (byteThree<<16) | (byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//36
+        byteTwo = fgetc(file);//37
+        byteThree = fgetc(file);//38
+        byteFour = fgetc(file);//39
+        bs_ptr->BPB_FATSz32 = (byteFour<<24) | (byteThree<<16) | (byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//40
+        byteTwo = fgetc(file);//41
+        bs_ptr->BPB_ExtFlags = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	
+	byteOne = fgetc(file);//42
+        byteTwo = fgetc(file);//43
+        bs_ptr->BPB_FSVer = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//44
+        byteTwo = fgetc(file);//45
+        byteThree = fgetc(file);//46
+        byteFour = fgetc(file);//47
+        bs_ptr->BPB_RootClus = (byteFour<<24) | (byteThree<<16) | (byteTwo<<8) | byteOne;
+
+	byteOne = fgetc(file);//48
+        byteTwo = fgetc(file);//49
+        bs_ptr->BPB_FSInfo = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	
+	byteOne = fgetc(file);//50
+        byteTwo = fgetc(file);//51
+        bs_ptr->BPB_BkBootSec = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+
+	for(i = 0; i < 12;i++)
+                bs_ptr->BPB_Reserved[i] = fgetc(file);//52-63
+
+	bs_ptr->BS_DrvNum = fgetc(file);      //64
+
+	bs_ptr->BS_Reserved1 = fgetc(file); //65
+
+	bs_ptr->BS_BootSig = fgetc(file); //66
+
+	byteOne = fgetc(file);//67
+        byteTwo = fgetc(file);//68
+        byteThree = fgetc(file);//69
+        byteFour = fgetc(file);//70
+        bs_ptr->BS_VolID = (byteFour<<24) | (byteThree<<16) | (byteTwo<<8) | byteOne;
+	
+	for(i = 0; i < 11;i++)
+                bs_ptr->BS_VolLab[i] = fgetc(file);//71-81
+
+	for(i = 0; i < 8;i++)
+                bs_ptr->BS_FilSysType[i] = fgetc(file);	
+
 	fclose(file);
 	
 	return bs_ptr;
