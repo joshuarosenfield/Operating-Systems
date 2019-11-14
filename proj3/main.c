@@ -42,6 +42,22 @@ typedef struct
 	uint8_t BS_VolLab[11];
 	uint8_t BS_FilSysType[8];
 } __attribute__((packed)) boot_sector_struct;
+
+typedef struct
+{
+	uint8_t DIR_Name[11];
+	uint8_t DIR_Attr;
+	uint8_t DIR_NTRes;
+	uint8_t DIR_CrtTimeTenth;
+	uint16_t DIR_CrtTime;
+	uint16_t DIR_CrtDate;
+	uint16_t DIR_LstAccDate;
+	uint16_t DIR_FstClusHI;
+	uint16_t DIR_WrtTime;
+	uint16_t DIR_WrtDate;
+	uint16_t DIR_FstClusLO;
+	uint32_t DIR_FileSize;
+} __attribute__((packed)) directory_struct;
 /* END STRUCT DEFINITIONS */
 
 /* 1 TO PRINT TEST PRINTOUTS */
