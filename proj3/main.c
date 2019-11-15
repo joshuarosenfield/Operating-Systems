@@ -76,7 +76,9 @@ void addNull(instruction* instr_ptr);
 void executeCommand(instruction* instr_ptr);
 void func_exit();
 void info(boot_sector_struct* bs);
-boot_sector_struct * bootSectorParse(void);
+boot_sector_struct* bootSectorParse(void);
+void ls(char* directoryName);
+int clusterToValue(int cluster);
 /* END FUNCTION DEFINITIONS */
 
 int main(int argc, char** argv) {
@@ -160,6 +162,7 @@ void executeCommand(instruction *instr_ptr){
 	else if(strcmp(instr_ptr->tokens[0], "ls") == 0){
         	if(testPrints)
 		        printf("call ls function\n");
+		ls(instr_ptr->tokens[1]);
 	}
 	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
         	if(testPrints)
@@ -250,7 +253,36 @@ void func_exit(){
                 printf("inside exit function\n");
 	exit(0);
 }
+
+void ls(char* directoryName){
+	if(testPrints)
+                printf("inside ls function with %s as input\n", directoryName);
+		printf("%X\n", clusterToValue(3));
+}
 /* END PART 1 - 13 */
+
+/*FUNCTION TAKES A CLUSTER NUMBER AND RETURNS ITS VALUE */
+int clusterToValue(int cluster){
+	if(testPrints)
+		printf("inside of clusterToValue()\n");
+	int i, start, FATOffset, value, itr, shift;
+	
+	value = 0;
+        start = bootSector->BPB_RsvdSecCnt * bootSector->BPB_BytsPerSec; //start of FAT at reseveredsec * size
+        FATOffset = cluster * 4; 	//N * 4
+        itr = start + FATOffset;		//start of inputed cluster at beginning of FAT + FATOffset
+
+        FILE* file = fopen(imagePath, "r+");
+        fseek(file, itr, SEEK_SET);	//SEEK_SET IS BEGINNING OF FILE
+        for(i = 0; i < 4; i++){
+		shift = fgetc(file) << (i * 8);
+                value = value | shift;
+        }
+
+	fclose(file);
+	return value;
+}
+/*END OF CLUSTERTOVALUE() FUNCTION*/
 
 /* FUNCTION PARSES BOOT SECTOR */
 boot_sector_struct * bootSectorParse(){
