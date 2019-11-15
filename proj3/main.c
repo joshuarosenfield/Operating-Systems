@@ -79,6 +79,7 @@ void info(boot_sector_struct* bs);
 boot_sector_struct* bootSectorParse(void);
 void ls(char* directoryName);
 int clusterToValue(int cluster);
+int firstDataSector(void);
 /* END FUNCTION DEFINITIONS */
 
 int main(int argc, char** argv) {
@@ -257,10 +258,17 @@ void func_exit(){
 void ls(char* directoryName){
 	if(testPrints)
                 printf("inside ls function with %s as input\n", directoryName);
-		printf("%X\n", clusterToValue(3));
 }
 /* END PART 1 - 13 */
 
+/*FUNCTION RETURNS SECTOR WHERE DATA STARTS*/
+int firstDataSector(){
+	if(testPrints)
+                printf("inside of firstDataSector() have to multiple by SecSize to get offset\n");
+	return(bootSector->BPB_RsvdSecCnt + (bootSector->BPB_NumFATs * bootSector->BPB_FATSz32));
+}
+/*END OF FIRSTDATASECTOR()*/
+ 
 /*FUNCTION TAKES A CLUSTER NUMBER AND RETURNS ITS VALUE */
 int clusterToValue(int cluster){
 	if(testPrints)
