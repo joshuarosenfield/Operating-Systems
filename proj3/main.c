@@ -66,6 +66,7 @@ int testPrints = 1;
 /* GLOBAL VARIABLES */
 boot_sector_struct* bootSector;
 char* imagePath;
+int clusterLocation;
 /* END GLOBAL VARIABLES */
 
 /* FUNCTION DEFINITIONS */
@@ -76,10 +77,13 @@ void addNull(instruction* instr_ptr);
 void executeCommand(instruction* instr_ptr);
 void func_exit();
 void info(boot_sector_struct* bs);
+void size(char * FILENAME);
+void ls(char* DIRNAME);
 boot_sector_struct* bootSectorParse(void);
-void ls(char* directoryName);
+directory_struct* directoryParse(int);
 int clusterToValue(int cluster);
 int firstDataSector(void);
+int FirstSectorofCluster(unsigned int N);
 /* END FUNCTION DEFINITIONS */
 
 int main(int argc, char** argv) {
@@ -98,6 +102,7 @@ int main(int argc, char** argv) {
 	imagePath = argv[1];
 	printf("Welcome to the ./FAT32 shell utility\n");
 	bootSector = bootSectorParse();
+	clusterLocation = bootSector->BPB_RootClus;
 	printf("Image %s, is ready to view\n", argv[1]);
 	while (1) {
 		printf("/] ");
@@ -159,6 +164,7 @@ void executeCommand(instruction *instr_ptr){
 	else if(strcmp(instr_ptr->tokens[0], "size") == 0){
         	if(testPrints)
 		       printf("call size function\n");
+		size(instr_ptr->tokens[1]);
 	}
 	else if(strcmp(instr_ptr->tokens[0], "ls") == 0){
         	if(testPrints)
@@ -255,11 +261,42 @@ void func_exit(){
 	exit(0);
 }
 
-void ls(char* directoryName){
+void size(char * FILENAME){
 	if(testPrints)
-                printf("inside ls function with %s as input\n", directoryName);
+                printf("inside size function with %s as input\n", FILENAME);	
+}
+
+void ls(char* DIRNAME){
+	//TODO::add capabilites for directory searching
+	if(testPrints)
+                printf("inside ls function with %s as input\n", DIRNAME);
+	int i, offset, total;
+	directory_struct* dir_ptr = malloc(sizeof(directory_struct));
+	if(DIRNAME == NULL){
+    			offset = FirstSectorofCluster(clusterLocation) * bootSector->BPB_BytsPerSec;
+    			total = offset + bootSector->BPB_BytsPerSec;
+			//if(testPrints)
+			//	printf("offset = %d\n", offset);
+    			while(offset < total){
+        			dir_ptr = directoryParse(offset);
+        			if(dir_ptr->DIR_Attr == 0)
+            				break;		
+        			for(i = 0;i < 11; i++)
+            				printf("%c",dir_ptr->DIR_Name[i]);
+        			printf("\n");
+
+        			offset += 64;
+    			}
+	free(dir_ptr);
+	}
 }
 /* END PART 1 - 13 */
+
+/*FIRST SECTOR OF CLUSTER FUNCTION */
+int FirstSectorofCluster(unsigned int N){
+    return firstDataSector() + ((N - 2) * bootSector->BPB_SecPerClus);
+}
+/*END OF FIRSTSECTOROFCLUSTERFUNCTION() */
 
 /*FUNCTION RETURNS SECTOR WHERE DATA STARTS*/
 int firstDataSector(){
@@ -413,6 +450,56 @@ boot_sector_struct * bootSectorParse(){
 }
 /* END BOOTSECTORPARSE() FUNCTION*/
 
+/* FUNCTION PARSES DIRECTORY*/
+directory_struct * directoryParse(int offset){
+	if(testPrints)
+                printf("inside parse directory function\n");
+	int i;
+	unsigned int byteOne, byteTwo, byteThree, byteFour, ignore;
+	directory_struct * dir_ptr = malloc(sizeof(directory_struct));
+	FILE* file = fopen(imagePath, "r+");
+        if(!file){
+                printf("error opening %s\nexiting...\n",imagePath);
+                exit(1);
+        }
+	fseek(file, offset, SEEK_SET);
+	for(i = 0;i < 32;i++)
+		ignore = fgetc(file);
+	for(i = 0; i < 11;i++)
+                dir_ptr->DIR_Name[i] = fgetc(file);	//0-10
+	dir_ptr->DIR_Attr = fgetc(file);		//11
+	dir_ptr->DIR_NTRes = fgetc(file);		//12
+	dir_ptr->DIR_CrtTimeTenth = fgetc(file);	//13
+	byteOne = fgetc(file);				//14
+	byteTwo = fgetc(file);				//15
+	dir_ptr->DIR_CrtTime = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	byteOne = fgetc(file);                          //16
+        byteTwo = fgetc(file);                          //17
+        dir_ptr->DIR_CrtDate = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	byteOne = fgetc(file);                          //18
+        byteTwo = fgetc(file);                          //19
+        dir_ptr->DIR_LstAccDate = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	byteOne = fgetc(file);                          //20
+        byteTwo = fgetc(file);                          //21
+        dir_ptr->DIR_FstClusHI = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	byteOne = fgetc(file);                          //22
+        byteTwo = fgetc(file);                          //23
+        dir_ptr->DIR_WrtTime = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+       	byteOne = fgetc(file);                          //24
+        byteTwo = fgetc(file);                          //25
+        dir_ptr->DIR_WrtDate = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	byteOne = fgetc(file);                          //26
+        byteTwo = fgetc(file);                          //27
+        dir_ptr->DIR_FstClusLO = ((byteOne) | ((byteTwo) << 8)); //(byteTwo<<8) | byteOne;
+	byteOne = fgetc(file);				//28
+        byteTwo = fgetc(file);				//29
+        byteThree = fgetc(file);			//30
+        byteFour = fgetc(file);				//31
+       	dir_ptr->DIR_FileSize = (byteFour << 24) | (byteThree << 16) | (byteTwo << 8) | byteOne;
+
+	fclose(file);
+	return dir_ptr;
+}
 /* PARSING FUNCTIONS */
 void addToken(instruction* instr_ptr, char* tok)
 {
