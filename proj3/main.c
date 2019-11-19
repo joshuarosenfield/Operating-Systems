@@ -61,7 +61,7 @@ typedef struct
 /* END STRUCT DEFINITIONS */
 
 /* 1 TO PRINT TEST PRINTOUTS */
-int testPrints = 1;
+int testPrints = 0;
 
 /* GLOBAL VARIABLES */
 boot_sector_struct* bootSector;
@@ -84,6 +84,7 @@ directory_struct* directoryParse(int);
 int clusterToValue(int cluster);
 int firstDataSector(void);
 int FirstSectorofCluster(unsigned int N);
+int findOffset(char* NAME); 
 /* END FUNCTION DEFINITIONS */
 
 int main(int argc, char** argv) {
@@ -262,9 +263,19 @@ void func_exit(){
 }
 
 void size(char * FILENAME){
+	//TODO::add capabilites for directory searching
 	if(testPrints)
                 printf("inside size function with %s as input\n", FILENAME);	
+	int offset = findOffset(FILENAME);
+    	if(offset == -1){
+		printf("FILE %s NOT FOUND\n", FILENAME);
+		return;
+	}
+	directory_struct * dir_ptr = directoryParse(offset);	
+        printf("Size of %s: %X\n", FILENAME, dir_ptr->DIR_FileSize);
+       	free(dir_ptr);    	
 }
+
 
 void ls(char* DIRNAME){
 	//TODO::add capabilites for directory searching
@@ -291,6 +302,36 @@ void ls(char* DIRNAME){
 	}
 }
 /* END PART 1 - 13 */
+
+/*FIND OFFSET TO NAME*/
+int findOffset(char* NAME){
+ 	int offset, i, total, file;
+	offset = FirstSectorofCluster(clusterLocation) * bootSector->BPB_BytsPerSec;
+	directory_struct* dir_ptr = malloc(sizeof(directory_struct));   
+	total = offset + bootSector->BPB_BytsPerSec;
+	while(offset < total){
+		file = 0;
+		dir_ptr = directoryParse(offset);
+        	if(dir_ptr->DIR_Attr == 0){
+            		offset += 64;
+			break;
+        	}
+        	for(i = 0;i < 11; i++){				
+			if(NAME[i] == '\0' && dir_ptr->DIR_Name[i] == 32){
+                		file = 1;
+                		break;
+            		}
+			else if(toupper(NAME[i]) != dir_ptr->DIR_Name[i])
+                		break;
+        	}
+        	if(file)
+            		return offset;
+        offset += 64; 	
+    	}
+	return -1;
+	free(dir_ptr);
+}
+/*END OF FINDOFFSET() */
 
 /*FIRST SECTOR OF CLUSTER FUNCTION */
 int FirstSectorofCluster(unsigned int N){
