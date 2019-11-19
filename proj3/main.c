@@ -79,6 +79,7 @@ void func_exit();
 void info(boot_sector_struct* bs);
 void size(char * FILENAME);
 void ls(char* DIRNAME);
+void cd(char* DIRNAME);
 boot_sector_struct* bootSectorParse(void);
 directory_struct* directoryParse(int);
 int clusterToValue(int cluster);
@@ -175,6 +176,7 @@ void executeCommand(instruction *instr_ptr){
 	else if(strcmp(instr_ptr->tokens[0], "cd") == 0){
         	if(testPrints)
 		       printf("call cd function\n");
+		cd(instr_ptr->tokens[1]);
 	}
 	else if(strcmp(instr_ptr->tokens[0], "creat") == 0){
          	if(testPrints)
@@ -266,6 +268,10 @@ void size(char * FILENAME){
 	//TODO::add capabilites for directory searching
 	if(testPrints)
                 printf("inside size function with %s as input\n", FILENAME);	
+	if(FILENAME == '\0'){
+                printf("ERROR NO IMPUT\n");
+		return;
+        }
 	int offset = findOffset(FILENAME);
     	if(offset == -1){
 		printf("FILE %s NOT FOUND\n", FILENAME);
@@ -300,6 +306,31 @@ void ls(char* DIRNAME){
     			}
 	free(dir_ptr);
 	}
+}
+
+void cd(char* DIRNAME){
+	if(testPrints)
+                printf("inside cd function with %s as input\n", DIRNAME);
+	if(DIRNAME == '\0'){
+		clusterLocation = 2;
+		return;
+	}
+	int offset = findOffset(DIRNAME);
+        if(offset == -1){
+                printf("DIRECTORY %s NOT FOUND\n", DIRNAME);
+                return;
+        }
+        directory_struct * dir_ptr = directoryParse(offset);
+        if (dir_ptr->DIR_Attr != 16){
+		printf("DIRECTORY %s NOT FOUND\n", DIRNAME);
+                free(dir_ptr);
+		return;
+	}
+	clusterLocation = dir_ptr->DIR_FstClusHI << 16 | dir_ptr->DIR_FstClusLO;
+	if(testPrints)
+		printf("cluster location %d\n", clusterLocation);
+	free(dir_ptr);
+	
 }
 /* END PART 1 - 13 */
 
