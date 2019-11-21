@@ -287,10 +287,12 @@ void ls(char* DIRNAME){
 	//TODO::add capabilites for directory searching
 	if(testPrints)
                 printf("inside ls function with %s as input\n", DIRNAME);
-	int i, offset, total;
+	int i, offset, total, nextCluster;
+	nextCluster = clusterLocation;
 	directory_struct* dir_ptr = malloc(sizeof(directory_struct));
 	if(DIRNAME == NULL){
-    			offset = FirstSectorofCluster(clusterLocation) * bootSector->BPB_BytsPerSec;
+    		do{
+			offset = FirstSectorofCluster(nextCluster) * bootSector->BPB_BytsPerSec;
     			total = offset + bootSector->BPB_BytsPerSec;
 			//if(testPrints)
 			//	printf("offset = %d\n", offset);
@@ -303,7 +305,9 @@ void ls(char* DIRNAME){
         			printf("\n");
 
         			offset += 64;
-    			}
+    				}
+			nextCluster = clusterToValue(nextCluster);
+		}while(nextCluster != 0x0FFFFFFFF);
 	free(dir_ptr);
 	}
 }
