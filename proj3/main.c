@@ -81,6 +81,8 @@ void size(char * FILENAME);
 void ls(char* DIRNAME);
 void cd(char* DIRNAME);
 void creat(char* FILENAME);
+void rm(char* FILENAME);
+void rmdir(char* DIRNAME);
 boot_sector_struct* bootSectorParse(void);
 directory_struct* directoryParse(int);
 int clusterToValue(int cluster);
@@ -208,10 +210,12 @@ void executeCommand(instruction *instr_ptr){
 	else if(strcmp(instr_ptr->tokens[0], "rm") == 0){
         	 if(testPrints)
 			printf("call rm function\n");
+		rm(instr_ptr->tokens[1]);
 	}
 	else if(strcmp(instr_ptr->tokens[0], "rmdir") == 0){
          	if(testPrints)
 		      printf("call rmdir function\n");
+		rmdir(instr_ptr->tokens[1]);
 	}
 	else
 		printf("input invalid\n");
@@ -301,8 +305,11 @@ void ls(char* DIRNAME){
 			//	printf("offset = %d\n", offset);
     			while(offset < total){
         			dir_ptr = directoryParse(offset);
-        			if(dir_ptr->DIR_Attr == 0)
-            				break;		
+        			if(dir_ptr->DIR_Attr == 0){
+                                        offset += 64;
+					continue;	
+			//break;
+				}	
         			for(i = 0;i < 11; i++)
             				printf("%c",dir_ptr->DIR_Name[i]);
         			printf("\n");
@@ -368,7 +375,7 @@ void creat(char* FILENAME){
 		printf("free sector offset is %d\n", sectorOffset);
 	if(sectorOffset == -1){
 		//TODO::need to expand	
-		printf("CANT ADD FILE BECAUSE FULL\n");
+		printf("CANT ADD BECAUSE FULL\n");
 		return;
 	}
 	else
@@ -376,13 +383,13 @@ void creat(char* FILENAME){
 	
 	FILE* file_ptr2 = fopen(imagePath, "r+b");
         fseek(file_ptr2, offset, SEEK_SET);
+	
 	i = 0;
-        
 	while(i != 11){
-		if (i < fileLength)
+		if(i < fileLength)
 			dir_ptr->DIR_Name[i] = FILENAME[i];
 		else
-			dir_ptr->DIR_Name[i] = 0x20;
+			dir_ptr->DIR_Name[i] = 0x20;	//0x20 = .
 		i += 1;
 	}
 
@@ -390,13 +397,83 @@ void creat(char* FILENAME){
         dir_ptr->DIR_FstClusHI = (clusterReplace & 0xFFFF0000) >> 16;
         dir_ptr->DIR_FileSize = 0;
         dir_ptr->DIR_Attr = 0x20;
-
+	dir_ptr->DIR_CrtDate = 0x0;
 	fwrite(dir_ptr, sizeof(directory_struct), 1, file_ptr2);
         
 	fclose(file_ptr2);
         free(dir_ptr);
 		
 	//printf("ERROR CREATING FILE %s\n", FILENAME);
+}
+
+void rm(char* FILENAME){
+	if(testPrints)
+                printf("inside rm function with %s as input\n", FILENAME);
+	int offset, i;
+        directory_struct * dir_ptr = malloc(sizeof(directory_struct));
+
+	offset = findOffset(FILENAME);
+        //printf("%d\n", offset);
+	if(offset == -1){
+		printf("INPUT %s NOT FOUND\n", FILENAME);
+                return;
+	}
+        dir_ptr = directoryParse(offset);
+	if(dir_ptr->DIR_Attr == 16){
+		printf("INPUT IS NOT FILE\n");
+        	free(dir_ptr);
+		return;
+	}
+	
+	FILE* file_ptr = fopen(imagePath, "r+b");
+	fseek(file_ptr, offset, SEEK_SET);	
+        
+	i = 0;
+
+       while(i < 64){
+		fseek(file_ptr, offset, SEEK_SET);
+		fputc(0x0, file_ptr);
+		i += 1;
+		offset += 1;
+	}
+	fclose(file_ptr);
+        free(dir_ptr);
+
+}
+
+void rmdir(char* DIRNAME){
+	if(testPrints)
+                printf("inside rmdir function with %s as input\n", DIRNAME);
+	int offset, i;
+        directory_struct * dir_ptr = malloc(sizeof(directory_struct));
+
+
+        offset = findOffset(DIRNAME);
+        //printf("%d\n", offset);
+        if(offset == -1){
+                printf("INPUT %s NOT FOUND\n", DIRNAME);
+                return;
+        }
+        dir_ptr = directoryParse(offset);
+	if(dir_ptr->DIR_Attr != 16){
+                printf("INPUT IS NOT DIRECTORY\n");
+                free(dir_ptr);
+                return;
+        }
+        FILE* file_ptr = fopen(imagePath, "r+b");
+        fseek(file_ptr, offset, SEEK_SET);
+
+        i = 0;
+
+       while(i < 64){
+                fseek(file_ptr, offset, SEEK_SET);
+                fputc(0x0, file_ptr);
+                i += 1;
+                offset += 1;
+        }
+        fclose(file_ptr);
+        free(dir_ptr);
+
 }
 /* END PART 1 - 13 */
 
@@ -415,7 +492,7 @@ int offsetOfFreeSpaceInCluster(int cluster){
 		result = -1;
 		while(offset < total){
        			dir_ptr = directoryParse(offset);
-       			if(dir_ptr->DIR_Attr == 0 && dir_ptr->DIR_Name[0] == 0){
+       			if(dir_ptr->DIR_Attr == 0){
             			result = offset;
         			break;
 			}
@@ -425,8 +502,8 @@ int offsetOfFreeSpaceInCluster(int cluster){
     		}
 
 		if(result > 0){
-        		return result;
-		        free(dir_ptr);
+        		free(dir_ptr);
+			return result;
 
 		}
 		nextCluster = clusterToValue(nextCluster);
@@ -434,37 +511,36 @@ int offsetOfFreeSpaceInCluster(int cluster){
 	free(dir_ptr);
 		//use result
 	//		printf("free sector offset is %d\n", result);
-	return -1;
+	return result;
 }
 /*END */
 
 /*FIND OFFSET TO NAME*/
 int findOffset(char* NAME){
- 	int offset, i, total, file;
+ 	int offset, i, total;
 	offset = FirstSectorofCluster(clusterLocation) * bootSector->BPB_BytsPerSec;
 	directory_struct* dir_ptr = malloc(sizeof(directory_struct));   
 	total = offset + bootSector->BPB_BytsPerSec;
 	while(offset < total){
-		file = 0;
 		dir_ptr = directoryParse(offset);
         	if(dir_ptr->DIR_Attr == 0){
             		offset += 64;
-			break;
-        	}
+			continue;
+		}
         	for(i = 0;i < 11; i++){				
 			if(NAME[i] == '\0' && dir_ptr->DIR_Name[i] == 32){
-                		file = 1;
-                		break;
+                		free(dir_ptr);
+				return offset;
             		}
-			else if(toupper(NAME[i]) != dir_ptr->DIR_Name[i])
-                		break;
+			else if(toupper(NAME[i]) != dir_ptr->DIR_Name[i]){
+				break;
+			}
         	}
-        	if(file)
-            		return offset;
         offset += 64; 	
     	}
+
+        free(dir_ptr);
 	return -1;
-	free(dir_ptr);
 }
 /*END OF FINDOFFSET() */
 
