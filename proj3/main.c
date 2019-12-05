@@ -586,7 +586,6 @@ int findOffset(char* NAME){
 	directory_struct* dir_ptr = malloc(sizeof(directory_struct));   
 	total = offset + bootSector->BPB_BytsPerSec;
 	while(offset < total){
-		printf("%08X\n", offset);
 		file = 0;
 		dir_ptr = directoryParse(offset);
         	if(dir_ptr->DIR_Attr == 0){
