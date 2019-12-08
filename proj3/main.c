@@ -58,6 +58,12 @@ typedef struct
 	uint16_t DIR_FstClusLO;
 	uint32_t DIR_FileSize;
 } __attribute__((packed)) directory_struct;
+
+struct filenode{
+	struct filenode* next;
+	int firstCluster;
+	int mode;
+};
 /* END STRUCT DEFINITIONS */
 
 /* 1 TO PRINT TEST PRINTOUTS */
@@ -67,6 +73,8 @@ int testPrints = 0;
 boot_sector_struct* bootSector;
 char* imagePath;
 int clusterLocation;
+int parentCluster; //parent directory
+struct filenode* table; //Holds file access records
 /* END GLOBAL VARIABLES */
 
 /* FUNCTION DEFINITIONS */
@@ -82,6 +90,8 @@ void ls(char* DIRNAME);
 void cd(char* DIRNAME);
 void creat(char* FILENAME);
 void mkdir(char* DIRNAME);
+void open(char* FILENAME, char* MODE);
+void close(char* FILENAME);
 void rm(char* FILENAME);
 void rmdir(char* DIRNAME);
 boot_sector_struct* bootSectorParse(void);
@@ -92,6 +102,9 @@ int FirstSectorofCluster(unsigned int N);
 int findOffset(char* NAME);
 int offsetOfFreeSpaceInCluster(int cluster);
 int littleEndian(int num);
+void addNode(int cluster, int mode);
+int findNode(int cluster);
+void removeNode(int cluster);
 /* END FUNCTION DEFINITIONS */
 
 int main(int argc, char** argv) {
@@ -101,7 +114,9 @@ int main(int argc, char** argv) {
 	instruction instr;
 	instr.tokens = NULL;
 	instr.numTokens = 0;
-	
+
+	table = NULL;
+
 	if(!argv[1]){
 		printf("arguemnt error\nexiting...\n");
 		exit(1);
@@ -197,10 +212,12 @@ void executeCommand(instruction *instr_ptr){
 	else if(strcmp(instr_ptr->tokens[0], "open") == 0){
         	if(testPrints)
 	       		printf("call open function\n");
+		open(instr_ptr->tokens[1], instr_ptr->tokens[2]);
 	}
 	else if(strcmp(instr_ptr->tokens[0], "close") == 0){
                 if(testPrints)
 			printf("call close function\n");
+		close(instr_ptr->tokens[1]);
 	}
 	else if(strcmp(instr_ptr->tokens[0], "read") == 0){
         	if(testPrints)
@@ -278,7 +295,7 @@ void size(char * FILENAME){
 	//TODO::add capabilites for directory searching
 	if(testPrints)
                 printf("inside size function with %s as input\n", FILENAME);	
-	if(FILENAME == '\0'){
+	if(FILENAME == NULL){
                 printf("ERROR NO IMPUT\n");
 		return;
         }
@@ -308,7 +325,6 @@ void ls(char* DIRNAME){
 				printf("offset = %d\n", offset);
     			while(offset < total){
         			dir_ptr = directoryParse(offset);
-//<<<<<<< HEAD
 				if(dir_ptr->DIR_Attr == 0x10 ||
 						dir_ptr->DIR_Attr == 0x20){
         				if(dir_ptr->DIR_Attr == 0)
@@ -320,8 +336,6 @@ void ls(char* DIRNAME){
 				}
 				offset += 32;
     			}
-//=======
-//>>>>>>> a5929b3de03fa6ad403d2a4ea67a75fd8e9a2d94
 			nextCluster = clusterToValue(nextCluster);
 		}while(nextCluster != 0x0FFFFFFFF);
 	free(dir_ptr);
@@ -331,8 +345,23 @@ void ls(char* DIRNAME){
 void cd(char* DIRNAME){
 	if(testPrints)
                 printf("inside cd function with %s as input\n", DIRNAME);
-	if(DIRNAME == '\0'){
+	if(DIRNAME == NULL){
 		clusterLocation = 2;
+		return;
+	}
+	//For current directory
+	if(DIRNAME[0] == '.' && DIRNAME[1] == '\0'){
+		return;
+	}
+	//For parent directory
+	if(DIRNAME[0] == '.' && DIRNAME[1] == '.' && DIRNAME[2] == '\0'){
+		//If already in root, error
+		if(clusterLocation == 2){
+			printf("ALREADY IN ROOT DIRECTORY\n");
+			return;
+		}
+		//Move back one directory
+		clusterLocation = parentCluster;
 		return;
 	}
 	int offset = findOffset(DIRNAME);
@@ -346,6 +375,7 @@ void cd(char* DIRNAME){
                 free(dir_ptr);
 		return;
 	}
+	parentCluster = clusterLocation;
 	clusterLocation = dir_ptr->DIR_FstClusHI << 16 | dir_ptr->DIR_FstClusLO;
 	if(testPrints)
 		printf("cluster location %d\n", clusterLocation);
@@ -546,6 +576,80 @@ void mkdir(char* DIRNAME){
         fclose(file_ptr2);
 	free(dir_ptr);
 }
+void open(char* FILENAME, char* MODE){
+	//Ensure both strings exist
+	if(FILENAME == NULL){
+		printf("INVALID FILENAME\n");
+		return;
+	}
+	if(MODE == NULL){
+		printf("INVALID MODE\n");
+		return;
+	}
+	//Check if file exists
+	int offset = findOffset(FILENAME);
+	if(offset == -1){
+		printf("FILE DOES NOT EXIST\n");
+		return;
+	}
+	directory_struct * dir_ptr = directoryParse(offset);
+	//Check if directory
+        if (dir_ptr->DIR_Attr == 0x10 || dir_ptr->DIR_Attr == 0x00){
+                printf("%s IS A DIRECTORY, CANNOT BE OPENED\n", FILENAME);
+                free(dir_ptr);
+                return;
+        }
+	//Convert MODE to int
+	int mode = 0;
+	if(strcmp(MODE,"r") == 0)
+		mode = 1;
+	else if(strcmp(MODE,"w") == 0)
+		mode = 2;
+	else if(strcmp(MODE,"rw") == 0 | strcmp(MODE,"wr") == 0)
+		mode = 3;
+	if(mode == 0){
+		printf("INVALID MODE\n");
+		return;
+	}
+
+	//Enforce read only
+	int read_only = 0;
+	if(dir_ptr->DIR_Attr == 0x01)
+		read_only = 1;
+	if(read_only == 1 && mode != 1){
+		printf("FILE IS READ ONLY\n");
+		return;
+	}
+
+	//Check if entry already exists
+	int val = findNode(offset);
+	if(val != -1){
+		printf("FILE IS ALREADY OPEN\n");
+		return;
+	}
+	//Add entry to list
+	addNode(offset, mode);	
+}
+void close(char* FILENAME){
+	if(FILENAME == NULL){
+                printf("INVALID FILENAME\n");
+                return;
+        }
+
+        //Check if file exists
+        int offset = findOffset(FILENAME);
+        if(offset == -1){
+                printf("FILE DOES NOT EXIST\n");
+                return;
+        }
+	//Check if already open
+	if(findNode(offset) == -1){
+		printf("FILE IS NOT OPEN\n");
+		return;
+	}
+	//Remove node
+	removeNode(offset);
+}
 void rm(char* FILENAME){
 	if(testPrints)
                 printf("inside rm function with %s as input\n", FILENAME);
@@ -719,6 +823,8 @@ int clusterToValue(int cluster){
 	return value;
 }
 /*END OF CLUSTERTOVALUE() FUNCTION*/
+
+/* FUNCTION FINDS LITTLE ENDIAN OF 8 HEX DIGITS */
 int littleEndian(int val){
 	int b1, b2, b3, b4;
 	b1 = (val & 0x000000FF) << 24;
@@ -727,6 +833,84 @@ int littleEndian(int val){
 	b4 = (val & 0xFF000000) >> 24;
 	return b1 | b2 | b3 | b4;
 }
+/*END OF LITTLEENDIAN() FUNCTION */
+
+/* FUNCTION ADDS NODE TO FIEL TABLE */
+void addNode(int cluster, int mode){
+	//Create new node to add and initialize it
+	struct filenode* node = (struct filenode*)malloc(sizeof(struct filenode));
+	node->firstCluster = cluster;
+	node->mode = mode;
+
+	//Traverse list to reach last node
+	if(table == NULL){
+		table = node;
+		return;
+	}
+	struct filenode* temp_node = (struct filenode*)malloc(sizeof(struct filenode));
+	temp_node = table->next;
+	while(temp_node != NULL){
+		temp_node = temp_node->next;
+	}
+	//Add new node to end of lsit
+	temp_node->next = node;
+	free(temp_node);
+}
+/* END OF ADD() FUNCTION */
+
+/* FUNCTION SEARCHES FOR CLUSTER IN TABLE, RETURNS MODE ON SUCCESS */
+int findNode(int cluster){
+	//Allocate iterator
+	struct filenode* temp_node = (struct filenode*)malloc(sizeof(struct filenode));
+	
+	//Check first node
+	if(table == NULL){
+		return -1;
+	}
+	if(table->firstCluster == cluster)
+		return table->mode;
+	//Check each entry after
+	temp_node = table->next;
+	while(temp_node != NULL){
+		if(temp_node->firstCluster == cluster)
+			return table->mode;
+		temp_node = temp_node->next;
+	}
+	return -1;
+}
+/* END OF FINDNODE() FUNCTION */
+
+/* FUNCTION REMOVES NODE FROM TABLE */
+void removeNode(int cluster){
+	//Allocate iterator
+	struct filenode* temp_node = (struct filenode*)malloc(sizeof(struct filenode));
+
+	//Check first node
+	if(table == NULL)
+		return;
+	if(table->firstCluster == cluster){
+		//Remove first entry
+		table = table->next;
+		return;
+	}
+	temp_node = table->next;
+	while(temp_node->next != NULL && temp_node->next->firstCluster != cluster){
+		temp_node = temp_node->next;
+	}
+	//Check if last node matches
+	if(temp_node->firstCluster != cluster){
+		printf("FILE IS NOT OPEN\n");
+		return;
+	}
+	//Remove node
+	struct filenode* temp_node2 = (struct filenode*)malloc(sizeof(struct filenode));
+	temp_node2 = temp_node->next;
+	temp_node->next = temp_node->next->next;
+	free(temp_node2);
+
+}
+/* END OF REMOVENODE() FUNCTION */
+
 /* FUNCTION PARSES BOOT SECTOR */
 boot_sector_struct * bootSectorParse(){
 	if(testPrints)
