@@ -10,7 +10,7 @@ Contains:
 Division of labor and bugs:
 	Part 1: exit
 		Labor:
-			Joshua Rosenfield
+			Joshua Rosenfield and Ryan Kenney
 		Bugs:
 
 	Part 2: info
@@ -31,9 +31,9 @@ Division of labor and bugs:
 		
 	Part 5: cd DIRNAME
 		Labor:
-			Joshua Rosenfield
+			Joshua Rosenfield and Ryan Kenney
 		Bugs:
-
+			cd .. cannot go back more than one directory
 	Part 6: creat FILENAME
 		Labor:
 			Joshua Rosenfield and Ryan Kenney
@@ -42,9 +42,10 @@ Division of labor and bugs:
 
 	Part 7: mkdir DIRNAME 
 		Labor:
-			Ryan Kenney
+			Joshua Rosenfield and Ryan Kenney
 		Bugs:
-			Cannot create directories in subdirectories
+			Created directories are not generated properly;
+			cannot create files or directories in them
 	Part 8: open FILENAME MODE
 		Labor:
 			Ryan Kenney
@@ -57,8 +58,9 @@ Division of labor and bugs:
 
 	Part 10: read FILENAME OFFSET SIZE
 		Labor:
-
+			Ryan Kenney
 		Bugs:
+			Unfinished function; does not read files
 	Part 11: write FILENAME OFFSET SIZE STRING
 		Labor:
 
