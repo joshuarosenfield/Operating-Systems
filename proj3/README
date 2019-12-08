@@ -6,23 +6,31 @@ Group Members:
 
 Contains:
 	main.c
+	makefile
+
+How To Run:
+	>>make
+	>>./FAT32 fat32.img
+	or
+	>>gcc -o FAT32 main.c
+	>>./FAT32 fat32.img
 
 Division of labor and bugs:
 	Part 1: exit
 		Labor:
 			Joshua Rosenfield and Ryan Kenney
 		Bugs:
-
+			None
 	Part 2: info
 		Labor:
 			Joshua Rosenfield
 		Bugs:
-
+			None
 	Part 3: size FILENAME
 		Labor:
 			Joshua Rosenfield
 		Bugs:
-
+			None
 	Part 4: ls DIRNAME
 		Labor:
 			Joshua Rosenfield
@@ -34,6 +42,7 @@ Division of labor and bugs:
 			Joshua Rosenfield and Ryan Kenney
 		Bugs:
 			cd .. cannot go back more than one directory
+
 	Part 6: creat FILENAME
 		Labor:
 			Joshua Rosenfield and Ryan Kenney
@@ -46,16 +55,17 @@ Division of labor and bugs:
 		Bugs:
 			Created directories are not generated properly;
 			cannot create files or directories in them
+
 	Part 8: open FILENAME MODE
 		Labor:
 			Ryan Kenney
 		Bugs:
-
+			None
 	Part 9: close FILENAME 
 		Labor:
 			Ryan Kenney
 		Bugs:
-
+			None
 	Part 10: read FILENAME OFFSET SIZE
 		Labor:
 			Ryan Kenney
@@ -65,6 +75,7 @@ Division of labor and bugs:
 		Labor:
 
 		Bugs:
+
 	Part 12: rm FILENAME
 		Labor:
 			Joshua Rosenfield and Ryan Kenney
