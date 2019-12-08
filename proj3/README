@@ -1,1 +1,79 @@
-Project 3 README
+Project 3
+
+Group Members:
+	Joshua Rosenfield	
+	Ryan Kenney
+
+Contains:
+	main.c
+
+Division of labor and bugs:
+	Part 1: exit
+		Labor:
+			Joshua Rosenfield
+		Bugs:
+
+	Part 2: info
+		Labor:
+			Joshua Rosenfield
+		Bugs:
+
+	Part 3: size FILENAME
+		Labor:
+			Joshua Rosenfield
+		Bugs:
+
+	Part 4: ls DIRNAME
+		Labor:
+			Joshua Rosenfield
+		Bugs:
+			ls can only print current directory(no input)
+		
+	Part 5: cd DIRNAME
+		Labor:
+			Joshua Rosenfield
+		Bugs:
+
+	Part 6: creat FILENAME
+		Labor:
+			Joshua Rosenfield and Ryan Kenney
+		Bugs:
+			doesn't expand if table is full
+
+	Part 7: mkdir DIRNAME 
+		Labor:
+			Ryan Kenney
+		Bugs:
+
+	Part 8: open FILENAME MODE
+		Labor:
+
+		Bugs:
+
+	Part 9: close FILENAME 
+		Labor:
+
+		Bugs:
+
+	Part 10: read FILENAME OFFSET SIZE
+		Labor:
+
+		Bugs:
+	Part 11: write FILENAME OFFSET SIZE STRING
+		Labor:
+
+		Bugs:
+	Part 12: rm FILENAME
+		Labor:
+			Joshua Rosenfield and Ryan Kenney
+		Bugs:
+			delete entries but not from FAT
+
+	Part 13: rmdir DIRNAME
+		Labor:
+			Joshua Rosenfield and Ryan Kenney
+		Bugs:
+			delete entries but not from FAT
+
+
+
