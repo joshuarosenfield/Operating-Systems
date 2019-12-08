@@ -388,7 +388,7 @@ void creat(char* FILENAME){
                 printf("inside creat function with %s as input\n", FILENAME);
 	//check if file already exists
 	if(findOffset(FILENAME) != -1){
-		printf("FILE %s ALREADY EXISTS\n", FILENAME);
+		printf("NAME %s ALREADY EXISTS\n", FILENAME);
 		return;
 	}
 	//check if avaliable sector
@@ -452,7 +452,7 @@ void mkdir(char* DIRNAME){
                 printf("inside mkdir function with %s as input\n", DIRNAME);
         //check if file already exists
         if(findOffset(DIRNAME) != -1){
-                printf("DIRECTORY %s ALREADY EXISTS\n", DIRNAME);
+                printf("NAME %s ALREADY EXISTS\n", DIRNAME);
                 return;
         }
         //check if avaliable sector
@@ -734,13 +734,13 @@ int offsetOfFreeSpaceInCluster(int cluster){
     		total = offset + bootSector->BPB_BytsPerSec;
 		result = -1;
 		while(offset < total){
-       			dir_ptr = directoryParse(offset);
-       			if(dir_ptr->DIR_Attr == 0){
+       			dir_ptr = directoryParse(offset - 32);
+       			if(dir_ptr->DIR_Attr == 0 && dir_ptr->DIR_Name != 0){
             			result = offset;
         			break;
 			}
         		else{
-            			offset += 64;
+            			offset += 32;
        			}
     		}
 
