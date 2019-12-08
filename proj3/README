@@ -44,15 +44,15 @@ Division of labor and bugs:
 		Labor:
 			Ryan Kenney
 		Bugs:
-
+			Cannot create directories in subdirectories
 	Part 8: open FILENAME MODE
 		Labor:
-
+			Ryan Kenney
 		Bugs:
 
 	Part 9: close FILENAME 
 		Labor:
-
+			Ryan Kenney
 		Bugs:
 
 	Part 10: read FILENAME OFFSET SIZE
